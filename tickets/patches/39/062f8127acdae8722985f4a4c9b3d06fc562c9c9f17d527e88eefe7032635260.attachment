@@ -1,0 +1,48 @@
+# HG changeset patch
+# User Dirk Lemstra <dirk@imagemagick.org>
+# Date 1406413095 -7200
+#      Sun Jul 27 00:18:15 2014 +0200
+# Node ID d45d93112ee8b023550fb241a9d9050c21dc627d
+# Parent  8d0aa3a36d083a9f1fd31f8b593a0817a941351f
+With the MAGICK_GHOSTSCRIPT_PATH environment variable the Ghostscript folder can be specified under Windows.
+
+diff --git a/magick/nt_base.c b/magick/nt_base.c
+--- a/magick/nt_base.c
++++ b/magick/nt_base.c
+@@ -1111,18 +1111,34 @@ MagickExport int NTGhostscriptDLL(char *
+ {
+   static char
+     cache[MaxTextExtent],
+     *result=NULL;
+ 
+   path[0]='\0';
+ 
+   if (NULL == result)
+-    if (NTGhostscriptGetString("GS_DLL", cache, sizeof(cache)))
+-      result=cache;
++    {
++      const char
++        *directory;
++
++      directory=getenv("MAGICK_GHOSTSCRIPT_PATH");
++      if (directory != (const char *) NULL)
++        {
++          FormatString(cache, "%.1024s%sgsdll%u.dll", directory,
++            DirectorySeparator, (unsigned int) sizeof(directory)*8);
++          if (IsAccessibleAndNotEmpty(cache))
++            result=cache;
++          else
++            (void) LogMagickEvent(ConfigureEvent, GetMagickModule(),
++              "Unable to find ghostscript library: \"%s\"", cache);
++        }
++      else if (NTGhostscriptGetString("GS_DLL", cache, sizeof(cache)))
++        result=cache;
++    }
+ 
+   if (result)
+     {
+       (void) strlcpy(path, result, path_length);
+       return TRUE;
+     }
+ 
+   return FALSE;

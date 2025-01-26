@@ -1,0 +1,63 @@
+diff -Naur GraphicsMagick-1.3.28-has-colormap/wand/magick_wand.c GraphicsMagick-1.3.28-is-gray-image/wand/magick_wand.c
+--- GraphicsMagick-1.3.28-has-colormap/wand/magick_wand.c	2018-01-25 15:58:02.878837912 +1100
++++ GraphicsMagick-1.3.28-is-gray-image/wand/magick_wand.c	2018-01-25 15:59:24.722281857 +1100
+@@ -5242,6 +5242,48 @@
+ %                                                                             %
+ %                                                                             %
+ %                                                                             %
++%   M a g i c k I s G r a y I m a g e                                         %
++%                                                                             %
++%                                                                             %
++%                                                                             %
++%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
++%
++%  MagickIsGrayImage() returns True if the check was successful with the
++%  grayimage parameter set to a boolean value indicating whether the current
++%  wand image is a gray-scale image or not. Returns False if there was
++%  an error.
++%
++%  The format of the MagickIsGrayImage method is:
++%
++%      unsigned int MagickIsGrayImage(MagickWand *wand,
++%        unsigned int *grayimage)
++%
++%  A description of each parameter follows:
++%
++%    o wand: The magick wand.
++%
++%    o grayimage: Set to True if current image is a gray-scale image,
++%        False if not.
++%
++*/
++WandExport unsigned int MagickIsGrayImage(MagickWand *wand,
++  unsigned int *grayimage)
++{
++  assert(wand != (MagickWand *) NULL);
++  assert(wand->signature == MagickSignature);
++  assert(grayimage != (unsigned int *) NULL);
++  if (wand->images == (Image *) NULL)
++    ThrowWandException(WandError,WandContainsNoImages,wand->id);
++  MagickClearException(wand);
++  *grayimage = IsGrayImage(wand->image, &wand->exception);
++  return (wand->exception.severity == UndefinedException);
++}
++
++/*
++%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
++%                                                                             %
++%                                                                             %
++%                                                                             %
+ %   M a g i c k L a b e l I m a g e                                           %
+ %                                                                             %
+ %                                                                             %
+diff -Naur GraphicsMagick-1.3.28-has-colormap/wand/magick_wand.h GraphicsMagick-1.3.28-is-gray-image/wand/magick_wand.h
+--- GraphicsMagick-1.3.28-has-colormap/wand/magick_wand.h	2018-01-25 15:58:02.878837912 +1100
++++ GraphicsMagick-1.3.28-is-gray-image/wand/magick_wand.h	2018-01-25 15:59:24.798281421 +1100
+@@ -219,6 +219,7 @@
+   MagickHasNextImage(MagickWand *),
+   MagickHasPreviousImage(MagickWand *),
+   MagickImplodeImage(MagickWand *,const double),
++  MagickIsGrayImage(MagickWand *,unsigned int *),
+   MagickLabelImage(MagickWand *,const char *),
+   MagickLevelImage(MagickWand *,const double,const double,const double),
+   MagickLevelImageChannel(MagickWand *,const ChannelType,const double,

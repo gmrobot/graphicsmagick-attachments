@@ -1,0 +1,31 @@
+--- graphicsmagick-1.1.7.orig/magick/command.c	2007-06-25 17:34:51.710540701 +0000
++++ graphicsmagick-1.1.7.new/magick/command.c	2007-06-08 20:35:33.335894805 +0000
+@@ -1539,7 +1539,8 @@
+             if (*option == '-')
+               {
+                 i++;
+-                if ((i == argc) || !IsGeometry(argv[i]))
++//                if ((i == argc) || !IsGeometry(argv[i]))
++                if (i == argc)
+                   ThrowCompositeException(OptionError,MissingArgument,
+                     option);
+               }
+@@ -2832,7 +2833,8 @@
+             if (*option == '-')
+               {
+                 i++;
+-                if ((i == argc) || !IsGeometry(argv[i]))
++//                if ((i == argc) || !IsGeometry(argv[i]))
++                if (i == argc)
+                   ThrowConvertException(OptionError,MissingArgument,option);
+               }
+             break;
+@@ -9936,7 +9938,7 @@
+             if (*option == '-')
+               {
+                 i++;
+-                if ((i == argc) || !IsGeometry(argv[i]))
++                if (i == argc)
+                   ThrowMogrifyException(OptionError,MissingArgument,option);
+               }
+             break;

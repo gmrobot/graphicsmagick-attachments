@@ -1,0 +1,11 @@
+--- generic/Makefile.in	2011-03-11 12:29:33.000000000 +1300
++++ generic/Makefile.in	2011-03-11 12:32:36.000000000 +1300
+@@ -66,7 +66,7 @@
+ libTclMagick_la_OBJECTS = $(am_libTclMagick_la_OBJECTS)
+ libTclMagick_la_LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) \
+ 	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
+-	$(libTclMagick_la_LDFLAGS) $(LDFLAGS) -o $@
++	$(libTclMagick_la_LDFLAGS) $(LDFLAGS) $(TCL_STUB_LIB_SPEC) -o $@
+ libTkMagick_la_DEPENDENCIES =
+ am_libTkMagick_la_OBJECTS = libTkMagick_la-TkMagick.lo
+ libTkMagick_la_OBJECTS = $(am_libTkMagick_la_OBJECTS)

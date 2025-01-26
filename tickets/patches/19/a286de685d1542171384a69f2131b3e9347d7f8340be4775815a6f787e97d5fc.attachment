@@ -1,0 +1,184 @@
+diff -cBr .//magick/blob.c /home/snegovick/mailru/GraphicsMagick//magick/blob.c
+*** .//magick/blob.c	2010-02-28 23:40:40.000000000 +0300
+--- /home/snegovick/mailru/GraphicsMagick//magick/blob.c	2010-08-17 11:38:50.000000000 +0400
+***************
+*** 2503,2509 ****
+                  image->blob->file=image_info->file;
+                  image->blob->type=FileStream;
+                  image->blob->exempt=True;
+-                 (void) rewind(image->blob->file);
+                  if (image->logging)
+                    (void) LogMagickEvent(BlobEvent,GetMagickModule(),
+                                          "  opened image_info->file (%d) as FileStream blob 0x%p",
+--- 2503,2508 ----
+diff -cBr .//magick/constitute.c /home/snegovick/mailru/GraphicsMagick//magick/constitute.c
+*** .//magick/constitute.c	2010-03-02 21:14:15.000000000 +0300
+--- /home/snegovick/mailru/GraphicsMagick//magick/constitute.c	2010-08-17 11:54:50.000000000 +0400
+***************
+*** 9097,9099 ****
+--- 9097,9173 ----
+      }
+    return(status);
+  }
++ 
++ /*
++ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
++ %                                                                             %
++ %                                                                             %
++ %                                                                             %
++ %   W r i t e I m a g e s F i l e                                             %
++ %                                                                             %
++ %                                                                             %
++ %                                                                             %
++ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
++ %
++ %  WriteImagesFile() writes an image sequence to opened file.
++ %
++ %  The format of the WriteImagesFile method is:
++ %
++ %      unsigned int WriteImagesFile(const ImageInfo *image_info,Image *image,
++ %        FILE *file,ExceptionInfo *exception)
++ %
++ %  A description of each parameter follows:
++ %
++ %    o image_info: The image info.
++ %
++ %    o images: The image list.
++ %
++ %    o file: The image filename.
++ %
++ %    o exception: Return any errors or warnings in this structure.
++ %
++ %
++ */
++ MagickExport MagickPassFail WriteImagesFile(const ImageInfo *image_info,Image *image,
++ 					FILE * file ,ExceptionInfo *exception)
++ {
++   ImageInfo
++     *clone_info;
++ 
++   unsigned int
++     status=MagickPass;
++ 
++   /*
++     Write converted images.
++   */
++   assert(image_info != (const ImageInfo *) NULL);
++   assert(image_info->signature == MagickSignature);
++   assert(image != (Image *) NULL);
++   assert(image->signature == MagickSignature);
++   assert(exception != (ExceptionInfo *) NULL);
++   image->logging=IsEventLogging();
++   clone_info=CloneImageInfo(image_info);
++   if (clone_info)
++     {
++       register Image
++         *p;
++       (void) SetImageInfo(clone_info,
++ 			  (SETMAGICK_WRITE |
++ 			   (!clone_info->adjoin ? SETMAGICK_RECTIFY : 0U)),
++ 			  exception);
++       for (p=image; p != (Image *) NULL; p=p->next)
++         {
++           status &= WriteImage(clone_info,p);
++           if(p->exception.severity > exception->severity)
++             CopyException(exception,&p->exception);
++           GetImageException(p,exception);
++           if (clone_info->adjoin)
++             break;
++         }
++       if (clone_info->verbose)
++         (void) DescribeImage(image,stderr,False);
++       DestroyImageInfo(clone_info);
++       clone_info=0;
++     }
++   return(status);
++ }
+diff -cBr .//magick/constitute.h /home/snegovick/mailru/GraphicsMagick//magick/constitute.h
+*** .//magick/constitute.h	2010-03-02 00:15:28.000000000 +0300
+--- /home/snegovick/mailru/GraphicsMagick//magick/constitute.h	2010-08-16 12:12:07.000000000 +0400
+***************
+*** 174,179 ****
+--- 174,181 ----
+      const ImportPixelAreaOptions *options,ImportPixelAreaInfo *import_info),
+    WriteImage(const ImageInfo *image_info,Image *image),
+    WriteImages(const ImageInfo *image_info,Image *image,const char *filename,
++     ExceptionInfo *exception),
++   WriteImagesFile(const ImageInfo *image_info,Image *image,FILE * file,
+      ExceptionInfo *exception);
+  
+  extern MagickExport void
+diff -cBr .//wand/magick_wand.c /home/snegovick/mailru/GraphicsMagick//wand/magick_wand.c
+*** .//wand/magick_wand.c	2010-01-21 02:32:19.000000000 +0300
+--- /home/snegovick/mailru/GraphicsMagick//wand/magick_wand.c	2010-08-16 15:42:07.000000000 +0400
+***************
+*** 9982,9987 ****
+--- 9983,10037 ----
+      InheritException(&wand->exception,&wand->image->exception);
+    return(status);
+  }
++ 
++ /*
++ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
++ %                                                                             %
++ %                                                                             %
++ %                                                                             %
++ %   M a g i c k W r i t e I m a g e s F i l e                                 %
++ %                                                                             %
++ %                                                                             %
++ %                                                                             %
++ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
++ %
++ %  MagickWriteImagesFile() writes an image or image sequence.
++ %
++ %  The format of the MagickWriteImages method is:
++ %
++ %      unsigned int MagickWriteImagesFile(MagickWand *wand,
++ %        FILE * file,const unsigned int adjoin)
++ %
++ %  A description of each parameter follows:
++ %
++ %    o wand: The magick wand.
++ %
++ %    o file: The image file.
++ %
++ %    o adjoin: join images into a single multi-image file.
++ %
++ */
++ WandExport unsigned int MagickWriteImagesFile(MagickWand *wand,FILE * file,
++   const unsigned int adjoin)
++ {
++   ImageInfo
++     *write_info;
++ 
++   unsigned int
++     status;
++ 
++   assert(wand != (MagickWand *) NULL);
++   assert(wand->signature == MagickSignature);
++   write_info=CloneImageInfo(wand->image_info);
++   write_info->adjoin=adjoin;
++   write_info->file=file;
++   status=WriteImagesFile(write_info,wand->images,file,&wand->exception);
++   DestroyImageInfo(write_info);
++   if (status == False)
++     InheritException(&wand->exception,&wand->image->exception);
++   return(status);
++ }
++ 
+  
+  /*
+  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+diff -cBr .//wand/magick_wand.h /home/snegovick/mailru/GraphicsMagick//wand/magick_wand.h
+*** .//wand/magick_wand.h	2010-03-02 00:17:40.000000000 +0300
+--- /home/snegovick/mailru/GraphicsMagick//wand/magick_wand.h	2010-08-16 12:06:09.000000000 +0400
+***************
+*** 313,318 ****
+--- 313,319 ----
+    MagickWhiteThresholdImage(MagickWand *,const PixelWand *),
+    MagickWriteImage(MagickWand *,const char *),
+    MagickWriteImageFile(MagickWand *,FILE *),
++   MagickWriteImagesFile(MagickWand *,FILE *,const unsigned int),
+    MagickWriteImages(MagickWand *,const char *,const unsigned int);
+  
+  extern WandExport unsigned long

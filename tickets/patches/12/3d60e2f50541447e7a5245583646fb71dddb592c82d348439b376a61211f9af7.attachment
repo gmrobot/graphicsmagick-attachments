@@ -1,0 +1,10 @@
+--- /home/scsa/tiff.c.bak	2007-11-14 16:14:38.000000000 +0100
++++ /home/prog/app/downloads/GraphicsMagick-1.1.10/coders/tiff.c	2007-11-14 16:15:49.000000000 +0100
+@@ -2253,6 +2253,7 @@
+           one strip.
+         */
+         (void) TIFFSetField(tiff,TIFFTAG_ROWSPERSTRIP,image->rows);
++        (void) TIFFSetField(tiff,TIFFTAG_SUBFILETYPE,2);
+         break;
+       }
+       case COMPRESSION_CCITTFAX4:

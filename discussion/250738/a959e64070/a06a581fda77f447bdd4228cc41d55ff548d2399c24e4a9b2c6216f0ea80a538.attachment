@@ -1,0 +1,1 @@
+<div dir="ltr">gcc and clang seem to still have it(but deprecated), while VS has removed the definition.  This means that including headers like Magick++.h which transitively get you Drawable.h and STL.h will cause compilation errors.<br><div><br></div><div>Is there a recommended work around?</div></div>

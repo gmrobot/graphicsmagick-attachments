@@ -1,0 +1,75 @@
+--- coders/heif.c.orig	2023-01-06 09:10:04.439301100 +0100
++++ coders/heif.c	2023-01-06 10:19:45.834840900 +0100
+@@ -226,8 +226,23 @@
+ 
+           if (strncmp(profile_name,"Exif",4) == 0 && profile_size > 4)
+             {
+-              /* skip TIFF-Header */
+-              SetImageProfile(image,profile_name,profile+4,profile_size-4);
++              /* Parse and skip offset to TIFF header */
++              magick_uint32_t offset;
++
++              /* Big-endian offset decoding */
++              offset = *profile << 24 |
++                       *(profile+1) << 16 |
++                       *(profile+2) << 8 |
++                       *(profile+3);
++
++              profile_size -= 4;
++              if (offset > 0 && offset < profile_size)
++                {
++                  profile_size -= offset;
++                  (void) memmove(profile+4,profile+4+offset,profile_size);
++                }
++
++              SetImageProfile(image,profile_name,profile+4,profile_size);
+             }
+           else
+             {
+--- coders/jxl.c.orig	2023-01-06 09:10:24.749945000 +0100
++++ coders/jxl.c	2023-01-06 10:30:38.380821200 +0100
+@@ -808,9 +808,12 @@
+                                         type, (unsigned long) profile_size);
+ 
+                   /* Ignore tiny profiles */
+-                  if (profile_size < 4)
++                  if (profile_size < 12)
+                     break;
+ 
++                  /* Discard raw box size and type bytes */
++                  profile_size -= 8;
++
+                   if (LocaleNCompare(type,"Exif",sizeof(type)) == 0)
+                     {
+                       /*
+@@ -876,7 +879,12 @@
+       unsigned char *p = exif_profile;
+       magick_uint32_t exif_profile_offset;
+ 
+-      (void) memcpy(&exif_profile_offset,p+exif_pad,sizeof(exif_profile_offset));
++      /* Big-endian offset decoding */
++      exif_profile_offset = p[exif_pad+0] << 24 |
++                            p[exif_pad+1] << 16 |
++                            p[exif_pad+2] << 8 |
++                            p[exif_pad+3];
++
+ #if 0
+       fprintf(stderr,
+               "BOX-1: %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x\n",
+@@ -888,9 +896,15 @@
+                             (unsigned long) exif_size, exif_profile_offset);
+ 
+       /*
+-        FIXME: If the TIFF header offset is not zero, then need to
++        If the TIFF header offset is not zero, then need to
+         move the TIFF data forward to the correct offset.
+       */
++      exif_size -= 4;
++      if (exif_profile_offset > 0 && exif_profile_offset < exif_size)
++        {
++          exif_size -= exif_profile_offset;
++          (void) memmove(p+exif_pad+4,p+exif_pad+4+exif_profile_offset,exif_size);
++        }
+ 
+       p[0]='E';
+       p[1]='x';

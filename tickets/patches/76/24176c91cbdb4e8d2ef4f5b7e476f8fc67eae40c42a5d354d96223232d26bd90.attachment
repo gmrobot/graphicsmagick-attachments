@@ -1,0 +1,39 @@
+# HG changeset patch
+# User Przemysław Sobala <przemyslaw.sobala@gmail.com>
+# Date 1687175350 -7200
+#      Mon Jun 19 13:49:10 2023 +0200
+# Node ID fb0cdc0346386b9d25cac0d0129af623ff6d1815
+# Parent  1145694abfc739fe29556255367a6494cefdce4e
+fix pkg-config files for static build
+
+diff -r 1145694abfc7 -r fb0cdc034638 configure
+--- a/configure	Sun Jun 18 16:53:36 2023 -0500
++++ b/configure	Mon Jun 19 13:49:10 2023 +0200
+@@ -634,6 +634,7 @@
+ LTLIBOBJS
+ LIBOBJS
+ MAGICK_API_LIBS
++MAGICK_API_DEP_LIBS
+ MAGICK_API_LDFLAGS
+ MAGICK_API_PC_CPPFLAGS
+ MAGICK_API_CPPFLAGS
+diff -r 1145694abfc7 -r fb0cdc034638 configure.ac
+--- a/configure.ac	Sun Jun 18 16:53:36 2023 -0500
++++ b/configure.ac	Mon Jun 19 13:49:10 2023 +0200
+@@ -3911,6 +3911,7 @@
+ AC_SUBST([MAGICK_API_PC_CPPFLAGS])
+ AC_SUBST([MAGICK_API_LDFLAGS])
+ AC_SUBST([MAGICK_API_LIBS])
++AC_SUBST([MAGICK_API_DEP_LIBS])
+ 
+ AC_CONFIG_FILES(\
+         GraphicsMagick.spec \
+diff -r 1145694abfc7 -r fb0cdc034638 magick/GraphicsMagick.pc.in
+--- a/magick/GraphicsMagick.pc.in	Sun Jun 18 16:53:36 2023 -0500
++++ b/magick/GraphicsMagick.pc.in	Mon Jun 19 13:49:10 2023 +0200
+@@ -8,4 +8,5 @@
+ Version: @PACKAGE_VERSION@
+ Description: GraphicsMagick image processing library
+ Libs: -L${libdir} -lGraphicsMagick
++Libs.private: @LDFLAGS@ @MAGICK_API_DEP_LIBS@
+ Cflags: -I${includedir} @MAGICK_API_PC_CPPFLAGS@

@@ -1,0 +1,36 @@
+# HG changeset patch
+# User Przemysław Sobala <przemyslaw.sobala@gmail.com>
+# Date 1562833465 -7200
+#      Thu Jul 11 10:24:25 2019 +0200
+# Node ID c6cc5f81cb5c1783a130e3692e63dff07a0968b3
+# Parent  cafdeefd5e25b15ccb2de031caea5c79080f00ba
+WriteOnePNGImage(): Fix saving to palette when image has an alpha channel but no color is marked as transparent
+
+diff -r cafdeefd5e25 -r c6cc5f81cb5c coders/png.c
+--- a/coders/png.c	Mon Jul 01 10:07:14 2019 +0200
++++ b/coders/png.c	Thu Jul 11 10:24:25 2019 +0200
+@@ -7580,8 +7580,13 @@
+ 
+                       (void) LogMagickEvent(CoderEvent, GetMagickModule(),
+                          "  num_alpha = %d",num_alpha);
+-                      if (num_alpha == 1)
+-                         ping_valid_trns=1;
++                      if (num_alpha == 0)
++                      {
++                         image_matte = MagickFalse;
++                         ping_valid_trns = 0;
++                      }
++                      else if (num_alpha == 1)
++                         ping_valid_trns = 1;
+                       else
+                       {
+                          ping_colortype=PNG_COLOR_TYPE_RGB_ALPHA;
+@@ -7599,7 +7604,7 @@
+                                                  "    Cannot write image"
+                                                  " as indexed PNG,"
+                                                  " writing RGBA.");
+-                       }
++                      }
+ 
+                     if (ping_valid_trns != 0)
+                       {

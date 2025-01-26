@@ -1,0 +1,325 @@
+diff -Naur GraphicsMagick-1.3.25-get-exif-attribute-gps-fix/magick/attribute.c GraphicsMagick-1.3.25-set-exif-orientation-fix/magick/attribute.c
+--- GraphicsMagick-1.3.25-get-exif-attribute-gps-fix/magick/attribute.c	2016-12-22 10:44:46.803395424 +1100
++++ GraphicsMagick-1.3.25-set-exif-orientation-fix/magick/attribute.c	2016-12-22 10:44:46.783395544 +1100
+@@ -1589,7 +1589,7 @@
+   {
+     const char *
+       env_value;
+-
++    
+     /*
+       Allow enabling debug of EXIF tags
+     */
+@@ -2562,9 +2562,6 @@
+   unsigned long
+     offset;
+ 
+-  unsigned long
+-    gpsoffset;
+-
+   unsigned char
+     *tiffp,
+     *tiffp_max,
+@@ -2579,6 +2576,7 @@
+     nde;
+ 
+   MagickBool
++    gpsfoundstack[DE_STACK_SIZE],
+     gpsfound;
+ 
+   MagickBool
+@@ -2602,7 +2600,6 @@
+       }
+   }
+   gpsfound=MagickFalse;
+-  gpsoffset=0;
+   length=profile_length;
+   info=(unsigned char *) profile_info;
+   while (length != 0)
+@@ -2653,16 +2650,17 @@
+   do
+     {
+       /*
+-    If there is anything on the stack then pop it off.
++        If there is anything on the stack then pop it off.
+       */
+       if (level > 0)
+-    {
+-      level--;
+-      ifdp=ifdstack[level];
+-      de=destack[level];
+-    }
++        {
++          level--;
++          ifdp=ifdstack[level];
++          de=destack[level];
++          gpsfound=gpsfoundstack[level];
++        }
+       /*
+-    Determine how many entries there are in the current IFD.
++        Determine how many entries there are in the current IFD.
+         Limit the number of entries parsed to MAX_TAGS_PER_IFD.
+       */
+       if ((ifdp < tiffp) || (ifdp+2 > tiffp_max))
+@@ -2671,144 +2669,144 @@
+       if (nde > MAX_TAGS_PER_IFD)
+         nde=MAX_TAGS_PER_IFD;
+       for (; de < nde; de++)
+-    {
+-      unsigned int
+-        n;
++        {
++          unsigned int
++            n;
+ 
+-      int
+-        t,
+-        f,
+-        c;
++          int
++            t,
++            f,
++            c;
+ 
+-      unsigned char
+-        *pde,
+-        *pval;
++          unsigned char
++            *pde,
++            *pval;
+ 
+ 
+-      pde=(unsigned char *) (ifdp+2+(12*de));
++          pde=(unsigned char *) (ifdp+2+(12*de));
+           if (pde + 12 > tiffp + length)
+             {
+               if (debug)
+                 fprintf(stderr, "EXIF: Invalid Exif, entry is beyond metadata limit.\n");
+               goto find_attribute_failure;
+             }
+-      t=Read16u(morder,pde); /* get tag value */
+-      f=Read16u(morder,pde+2); /* get the format */
++          t=Read16u(morder,pde); /* get tag value */
++          f=Read16u(morder,pde+2); /* get the format */
+           if ((f < 0) ||
+               ((size_t) f >= sizeof(format_bytes)/sizeof(format_bytes[0])))
+-        break;
+-      c=(long) Read32u(morder,pde+4); /* get number of components */
+-      n=c*format_bytes[f];
+-      if (n <= 4)
+-        pval=(unsigned char *) pde+8;
+-      else
+-        {
+-          unsigned long
+-        oval;
+-
+-          /*
+-        The directory entry contains an offset.
+-          */
+-          oval=Read32u(morder,pde+8);
+-          if ((oval+n) > length)
+-        continue;
+-          pval=(unsigned char *)(tiffp+oval);
+-        }
++            break;
++          c=(long) Read32u(morder,pde+4); /* get number of components */
++          n=c*format_bytes[f];
++          if (n <= 4)
++            pval=(unsigned char *) pde+8;
++          else
++            {
++              unsigned long
++              oval;
+ 
+-      if (debug)
+-        {
+-          fprintf(stderr,
+-              "EXIF: TagVal=%d  TagDescr=\"%s\" Format=%d  "
+-              "FormatDescr=\"%s\"  Components=%d\n",t,
+-              EXIFTagToDescription(t,tag_description),f,
+-              EXIFFormatToDescription(f),c);
+-        }
++              /*
++                The directory entry contains an offset.
++              */
++              oval=Read32u(morder,pde+8);
++              if ((oval+n) > length)
++                continue;
++              pval=(unsigned char *)(tiffp+oval);
++            }
+ 
+-      if (gpsfound)
+-        {
+-          if ((t < GPS_TAG_START) || (t > GPS_TAG_STOP))
+-        {
+-          if (debug)
+-            fprintf(stderr,
+-                "EXIF: Skipping bogus GPS IFD tag %d ...\n",t);
+-          continue;
+-        }
+-        }
+-      else
+-        {
+-          if ((t < EXIF_TAG_START) || ( t > EXIF_TAG_STOP))
+-        {
+           if (debug)
+-            fprintf(stderr,
+-                "EXIF: Skipping bogus EXIF IFD tag %d ...\n",t);
+-          continue;
+-        }
+-        }
+-
+-      /*
+-        Return values for all the tags, or for a specific requested tag.
++            {
++              fprintf(stderr,
++                  "EXIF: TagVal=%d  TagDescr=\"%s\" Format=%d  "
++                  "FormatDescr=\"%s\"  Components=%d\n",t,
++                  EXIFTagToDescription(t,tag_description),f,
++                  EXIFFormatToDescription(f),c);
++            }
+ 
+-        Tags from the GPS sub-IFD are in a bit of a chicken and
+-        egg situation in that the tag for the GPS sub-IFD will not
+-        be seen unless we pass that tag through so it can be
+-        processed.  So we pass the GPS_OFFSET tag through, but if
+-        it was not requested, then we don't return a string value
+-        for it.
+-      */
+-      if (tag == t)
+-        {
+-          attribp = pde;
+-          break;
+-        }
++          if (gpsfound)
++            {
++              if ((t < GPS_TAG_START) || (t > GPS_TAG_STOP))
++                {
++                  if (debug)
++                    fprintf(stderr,
++                        "EXIF: Skipping bogus GPS IFD tag %d ...\n",t);
++                  continue;
++                }
++            }
++          else
++            {
++              if ((t < EXIF_TAG_START) || ( t > EXIF_TAG_STOP))
++                {
++                  if (debug)
++                    fprintf(stderr,
++                        "EXIF: Skipping bogus EXIF IFD tag %d ...\n",t);
++                  continue;
++                }
++            }
+ 
+-      if (t == GPS_OFFSET && (gpsoffset != 0))
+-        {
+-          if ((gpsoffset < length) && (level < (DE_STACK_SIZE-2)))
+-        {
+-          /*
+-            Push our current directory state onto the stack.
+-          */
+-          ifdstack[level]=ifdp;
+-          de++; /* bump to the next entry */
+-          destack[level]=de;
+-          level++;
+           /*
+-            Push new state onto of stack to cause a jump.
+-          */
+-          ifdstack[level]=tiffp+gpsoffset;
+-          destack[level]=0;
+-          level++;
+-        }
+-          gpsoffset=0;
+-          gpsfound=MagickTrue;
+-          break; /* break out of the for loop */
+-        }
++            Return values for all the tags, or for a specific requested tag.
+ 
+-      if ((t == TAG_EXIF_OFFSET) || (t == TAG_INTEROP_OFFSET))
+-        {
+-          offset=Read32u(morder,pval);
+-          if ((offset < length) && (level < (DE_STACK_SIZE-2)))
+-        {
+-          /*
+-            Push our current directory state onto the stack.
++            Tags from the GPS sub-IFD are in a bit of a chicken and
++            egg situation in that the tag for the GPS sub-IFD will not
++            be seen unless we pass that tag through so it can be
++            processed.  So we pass the GPS_OFFSET tag through, but if
++            it was not requested, then we don't return a string value
++            for it.
+           */
+-          ifdstack[level]=ifdp;
+-          de++; /* bump to the next entry */
+-          destack[level]=de;
+-          level++;
+-          /*
+-            Push new state onto of stack to cause a jump.
+-          */
+-          ifdstack[level]=tiffp+offset;
+-          destack[level]=0;
+-          level++;
+-        }
+-          gpsfound=MagickFalse;
+-          break; /* break out of the for loop */
++          if (tag == t)
++            {
++              attribp = pde;
++              break;
++            }
++
++          if (t == GPS_OFFSET)
++            {
++              offset=Read32u(morder,pval);
++              if ((offset < length) && (level < (DE_STACK_SIZE-2)))
++                {
++                  /*
++                    Push our current directory state onto the stack.
++                  */
++                  ifdstack[level]=ifdp;
++                  de++; /* bump to the next entry */
++                  destack[level]=de;
++                  gpsfoundstack[level]=gpsfound;
++                  level++;
++                  /*
++                    Push new state onto of stack to cause a jump.
++                  */
++                  ifdstack[level]=tiffp+offset;
++                  destack[level]=0;
++                  gpsfoundstack[level]=MagickTrue;
++                  level++;
++                }
++              break; /* break out of the for loop */
++            }
++
++          if ((t == TAG_EXIF_OFFSET) || (t == TAG_INTEROP_OFFSET))
++            {
++              offset=Read32u(morder,pval);
++              if ((offset < length) && (level < (DE_STACK_SIZE-2)))
++                {
++                  /*
++                    Push our current directory state onto the stack.
++                  */
++                  ifdstack[level]=ifdp;
++                  de++; /* bump to the next entry */
++                  destack[level]=de;
++                  gpsfoundstack[level]=gpsfound;
++                  level++;
++                  /*
++                    Push new state onto of stack to cause a jump.
++                  */
++                  ifdstack[level]=tiffp+offset;
++                  destack[level]=0;
++                  gpsfoundstack[level]=MagickFalse;
++                  level++;
++                }
++              break; /* break out of the for loop */
++            }
+         }
+-    }
+-    /* finished current IFD, clear IFD flags */
+-    gpsfound=MagickFalse;
+     } while (!attribp && (level > 0));
+   return attribp;
+  find_attribute_failure:

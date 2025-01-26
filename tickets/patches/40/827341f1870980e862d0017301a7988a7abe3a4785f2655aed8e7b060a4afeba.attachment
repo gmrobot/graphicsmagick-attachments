@@ -1,0 +1,425 @@
+# HG changeset patch
+# User Dirk Lemstra <dirk@imagemagick.org>
+# Date 1406662048 -7200
+#      Tue Jul 29 21:27:28 2014 +0200
+# Node ID 83f16352162c7d36231d8778e8b7198eaea3cce5
+# Parent  b90fee1eec8feb8be108032b1db13cec6db94be3
+Added define 'tiff:ignore-tags' to ignore specific tags that raise an error when reading a tiff image.
+
+diff --git a/coders/tiff.c b/coders/tiff.c
+--- a/coders/tiff.c
++++ b/coders/tiff.c
+@@ -101,20 +101,32 @@
+ 
+ /*
+   Global declarations.
+ */
+ static MagickTsdKey_t tsd_key = (MagickTsdKey_t) 0;
+ 
+ /* static ExceptionInfo */
+ /*   *tiff_exception; */
++
++typedef struct _TIFF_Clientdata
++{
++  Image
++    *image;
++
++  const ImageInfo
++    *image_info;
++} TIFF_Clientdata;
+ 
+ /*
+   Forward declarations.
+ */
++static tsize_t
++  TIFFReadBlob(thandle_t,tdata_t,tsize_t);
++
+ static MagickPassFail
+   WriteGROUP4RAWImage(const ImageInfo *image_info,Image *image),
+   WritePTIFImage(const ImageInfo *,Image *),
+   WriteTIFFImage(const ImageInfo *,Image *);
+ 
+ /*
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ %                                                                             %
+@@ -213,52 +225,130 @@ IsTIFF(const unsigned char *magick,const
+ %      if the image cannot be read.
+ %
+ %    o image_info: Specifies a pointer to a ImageInfo structure.
+ %
+ %    o exception: return any errors or warnings in this structure.
+ %
+ %
+ */
+-#if TIFFLIB_VERSION < 20050704 && defined(HAVE_TIFFMERGEFIELDINFO) && defined(HAVE_TIFFSETTAGEXTENDER)
++#if defined(HAVE_TIFFMERGEFIELDINFO) && defined(HAVE_TIFFSETTAGEXTENDER)
+ #  define EXTEND_TIFF_TAGS 1
+ #  if !defined(TIFFTAG_EXIFIFD)
+ #    define TIFFTAG_EXIFIFD 34665
+ #  endif
++#  if TIFFLIB_VERSION < 20050704
+ /* It seems that support was added for the EXIFIFDOffset tag in
+    libtiff release 3-7-3 which corresponds with TIFFLIB_VERSION
+    20050704 */
+ static const TIFFFieldInfo
+   ExtensionTiffFieldInfo[] =
+   {
+     {
+       TIFFTAG_EXIFIFD, -1, -1, TIFF_LONG, FIELD_CUSTOM,
+       MagickFalse, MagickTrue, "EXIFIFDOffset"
+     }
+   };
++#  endif
++
++/*
++    Ignore specific tags
++*/
++static void
++TIFFIgnoreTags(TIFF *tiff)
++{
++  char
++    *q;
++
++  const char
++    *p,
++    *tags;
++
++  const ImageInfo
++   *image_info;
++
++  register ssize_t
++    i;
++
++  size_t
++    count;
++
++  TIFFFieldInfo
++    *ignore;
++
++  if (TIFFGetReadProc(tiff) != TIFFReadBlob)
++    return;
++
++  image_info=((TIFF_Clientdata *)TIFFClientdata(tiff))->image_info;
++  tags=AccessDefinition(image_info,"tiff","ignore-tags");
++  if (tags == (const char *) NULL)
++    return;
++  count=0;
++  p=tags;
++  while (*p != '\0')
++  {
++    while ((isspace((int) ((unsigned char) *p)) != 0))
++      p++;
++
++    (void) strtol(p,&q,10);
++    if (p == q)
++      return;
++
++    p=q;
++    count++;
++
++    while ((isspace((int) ((unsigned char) *p)) != 0) || (*p == ','))
++      p++;
++  }
++  if (count == 0)
++    return;
++  i=0;
++  p=tags;
++  ignore=MagickAllocateArray(TIFFFieldInfo*,count,sizeof(*ignore));
++  /* This also sets field_bit to 0 (FIELD_IGNORE) */
++  (void) memset(ignore,0,count*sizeof(*ignore));
++  while (*p != '\0')
++  {
++    while ((isspace((int) ((unsigned char) *p)) != 0))
++      p++;
++
++    ignore[i].field_tag=(ttag_t) strtol(p,&q,10);
++
++    p=q;
++    i++;
++
++    while ((isspace((int) ((unsigned char) *p)) != 0) || (*p == ','))
++      p++;
++  }
++  (void) TIFFMergeFieldInfo(tiff,ignore,(uint32) count);
++  MagickFreeMemory(ignore);
++}
+ 
+ /*
+   Merge in our new fields and then call the next extender if there is
+   one in effect.
+ */
+ static TIFFExtendProc _ParentExtender = NULL;
+ static void
+ ExtensionTagsDefaultDirectory(TIFF *tif)
+ {
++#  if TIFFLIB_VERSION < 20050704
+   /* Install the extended Tag field info */
+   TIFFMergeFieldInfo(tif, ExtensionTiffFieldInfo,
+                      sizeof(ExtensionTiffFieldInfo)/
+                      sizeof(ExtensionTiffFieldInfo[0]));
++#  endif
+ 
+   /* Since an XTIFF client module may have overridden
+    * the default directory method, we call it now to
+    * allow it to set up the rest of its own methods.
+    */
+   if (_ParentExtender) 
+     (*_ParentExtender)(tif);
++  TIFFIgnoreTags(tif);
+ }
+ 
+ /*
+   Obtain the current handler at the front of the chain, and register
+   ourselves as the new first handler.
+ */
+ static
+ void ExtensionTagsInitialize(void)
+@@ -617,17 +707,18 @@ ReadNewsProfile(char *text,long int leng
+ extern "C" {
+ #endif
+ 
+ /* Close BLOB */
+ static int
+ TIFFCloseBlob(thandle_t image_handle)
+ {
+   Image
+-    *image = (Image *) image_handle;
++    *image = ((TIFF_Clientdata *) image_handle)->image;
++
+ #if LOG_TIFF_BLOB_IO
+   if (image->logging)
+     (void) LogMagickEvent(CoderEvent,GetMagickModule(),"TIFF close blob");
+ #endif /* LOG_TIFF_BLOB_IO */
+   while (image->previous != (Image *) NULL)
+     image=image->previous;
+   CloseBlob(image);
+   return(0);
+@@ -650,107 +741,122 @@ TIFFErrors(const char *module,const char
+   (void) strlcat(message,".",MaxTextExtent);
+   tiff_exception=(ExceptionInfo *) MagickTsdGetSpecific(tsd_key);
+   ThrowException2(tiff_exception,CoderError,message,module);
+   return(True);
+ }
+ 
+ /* Memory map entire input file in read-only mode. */
+ static int
+-TIFFMapBlob(thandle_t image,tdata_t *base,toff_t *size)
++TIFFMapBlob(thandle_t image_handle,tdata_t *base,toff_t *size)
+ {
+-  *base = (tdata_t *) GetBlobStreamData((Image *) image);
++  Image
++    *image = ((TIFF_Clientdata *) image_handle)->image;
++
++  *base = (tdata_t *) GetBlobStreamData(image);
+   if (*base)
+-    *size = (toff_t) GetBlobSize((Image *) image);
++    *size = (toff_t) GetBlobSize(image);
+ 
+   if (*base)
+     {
+ #if LOG_TIFF_BLOB_IO
+-      if (((Image *) image)->logging)
++  if (image->logging)
+         (void) LogMagickEvent(CoderEvent,GetMagickModule(),
+ 			      "TIFF mapped blob: base=0x%p size=%" MAGICK_OFF_F
+ 			      "d",*base, (magick_off_t) *size);
+ #endif
+       return 1;
+     }
+   return(0);
+ }
+ 
+ /* Read BLOB data at current offset */
+ static tsize_t
+-TIFFReadBlob(thandle_t image,tdata_t data,tsize_t size)
++TIFFReadBlob(thandle_t image_handle,tdata_t data,tsize_t size)
+ {
++  Image
++    *image = ((TIFF_Clientdata *) image_handle)->image;
++
+   tsize_t
+     result;
+ 
+-  result=(tsize_t) ReadBlob((Image *) image,(size_t) size,data);
++  result=(tsize_t) ReadBlob(image,(size_t) size,data);
+ 
+ #if LOG_TIFF_BLOB_IO
+-  if (((Image *) image)->logging)
++  if (image->logging)
+     (void) LogMagickEvent(CoderEvent,GetMagickModule(),
+                           "TIFF read blob: data=0x%p size=%"
+                           MAGICK_SIZE_T_F "u, returns %"
+ 			  MAGICK_SIZE_T_F "u",
+ 			  data, (MAGICK_SIZE_T) size,
+                           (MAGICK_SIZE_T) result);
+ #endif /* LOG_TIFF_BLOB_IO */
+ 
+   return result;
+ }
+ 
+ /* Seek to BLOB offset */
+ static toff_t
+-TIFFSeekBlob(thandle_t image,toff_t offset,int whence)
++TIFFSeekBlob(thandle_t image_handle,toff_t offset,int whence)
+ {
++  Image
++    *image = ((TIFF_Clientdata *) image_handle)->image;
++
+   toff_t
+     result;
+ 
+-  result=SeekBlob((Image *) image,offset,whence);
++  result=SeekBlob(image,offset,whence);
+ #if LOG_TIFF_BLOB_IO
+-  if (((Image *) image)->logging)
++  if (image->logging)
+     (void) LogMagickEvent(CoderEvent,GetMagickModule(),
+                           "TIFF seek blob: offset=%" MAGICK_OFF_F
+ 			  "u whence=%d (%s), returns %" MAGICK_OFF_F "d",
+                           (magick_off_t) offset,
+ 			  whence,
+                           (whence == SEEK_SET ? "SET" :
+                            (whence == SEEK_CUR ? "CUR" :
+                             (whence == SEEK_END ? "END" : "unknown"))),
+ 			  (magick_off_t) result);
+ #endif  /* LOG_TIFF_BLOB_IO */
+   return result;
+ }
+ 
+ /* Obtain BLOB size */
+ static toff_t
+-TIFFGetBlobSize(thandle_t image)
++TIFFGetBlobSize(thandle_t image_handle)
+ {
++  Image
++    *image = ((TIFF_Clientdata *) image_handle)->image;
++
+   toff_t
+     result;
+ 
+-  result=(toff_t) GetBlobSize((Image *) image);
++  result=(toff_t) GetBlobSize(image);
+ 
+ #if LOG_TIFF_BLOB_IO
+-  if (((Image *) image)->logging)
++  if (image->logging)
+     (void) LogMagickEvent(CoderEvent,GetMagickModule(),
+ 			  "TIFF get blob size returns %" MAGICK_OFF_F "d",
+ 			  (magick_off_t) result);
+ #endif /* LOG_TIFF_BLOB_IO */
+ 
+   return result;
+ }
+ 
+ /* Unmap BLOB memory */
+ static void
+ TIFFUnmapBlob(thandle_t ARGUNUSED(image),
+                           tdata_t ARGUNUSED(base),
+                           toff_t ARGUNUSED(size))
+ {
+ #if LOG_TIFF_BLOB_IO
+-  if (((Image *) image)->logging)
++  Image
++    *image = ((TIFF_Clientdata *) image_handle)->image;
++
++  if (image->logging)
+     (void) LogMagickEvent(CoderEvent,GetMagickModule(),
+ 			  "TIFF unmap blob: base=0x%p size=%" MAGICK_OFF_F "d",
+ 			  base,(magick_off_t) size);
+ #endif  /* LOG_TIFF_BLOB_IO */
+ }
+ 
+ /* Report warnings. */
+ static unsigned int
+@@ -771,25 +877,28 @@ TIFFWarnings(const char *module,const ch
+ /*   ThrowException2(tiff_exception,CoderWarning,message,module); */
+   (void) LogMagickEvent(CoderEvent,GetMagickModule(),
+                         "TIFF Warning: %s",message);
+   return(True);
+ }
+ 
+ /* Write data at current offset */
+ static tsize_t
+-TIFFWriteBlob(thandle_t image,tdata_t data,tsize_t size)
++TIFFWriteBlob(thandle_t image_handle,tdata_t data,tsize_t size)
+ {
++  Image
++    *image = ((TIFF_Clientdata *) image_handle)->image;
++
+   tsize_t
+     result;
+ 
+-  result=(tsize_t) WriteBlob((Image *) image,(size_t) size,data);
++  result=(tsize_t) WriteBlob(image,(size_t) size,data);
+ 
+ #if LOG_TIFF_BLOB_IO
+-  if (((Image *) image)->logging)
++  if (image->logging)
+     (void) LogMagickEvent(CoderEvent,GetMagickModule(),
+ 			  "TIFF write blob: data=0x%p size=%" MAGICK_SIZE_T_F
+ 			  "u, returns %" MAGICK_SIZE_T_F "u",
+ 			  data, (MAGICK_SIZE_T) size,
+ 			  (MAGICK_SIZE_T) result);
+ #endif  /* LOG_TIFF_BLOB_IO */
+ 
+   return result;
+@@ -1347,16 +1456,19 @@ ReadTIFFImage(const ImageInfo *image_inf
+   uint32
+     height,
+     rows_per_strip,
+     width;
+ 
+   TIFFMethod
+     method;
+ 
++  TIFF_Clientdata
++    client_data;
++
+   ImportPixelAreaOptions
+     import_options;
+ 
+   AlphaType
+     alpha_type=UnspecifiedAlpha;
+ 
+   MagickBool
+     logging,
+@@ -1376,17 +1488,19 @@ ReadTIFFImage(const ImageInfo *image_inf
+   image=AllocateImage(image_info);
+   more_frames=MagickFalse;
+   status=OpenBlob(image_info,image,ReadBinaryBlobMode,exception);
+   if (status == MagickFail)
+     ThrowReaderException(FileOpenError,UnableToOpenFile,image);
+   (void) MagickTsdSetSpecific(tsd_key,(void *) exception);
+   (void) TIFFSetErrorHandler((TIFFErrorHandler) TIFFErrors);
+   (void) TIFFSetWarningHandler((TIFFErrorHandler) TIFFWarnings);
+-  tiff=TIFFClientOpen(image->filename,"rb",(thandle_t) image,TIFFReadBlob,
++  client_data.image=image;
++  client_data.image_info=image_info;
++  tiff=TIFFClientOpen(image->filename,"rb",(thandle_t) &client_data,TIFFReadBlob,
+ 		      TIFFWriteBlob,TIFFSeekBlob,TIFFCloseBlob,
+ 		      TIFFGetBlobSize,TIFFMapBlob,TIFFUnmapBlob);
+   if (tiff == (TIFF *) NULL)
+     ThrowReaderException(FileOpenError,UnableToOpenFile,image);
+ 
+   if (image_info->subrange != 0)
+     while (image->scene < image_info->subimage)
+       {
+@@ -2532,17 +2646,17 @@ ReadTIFFImage(const ImageInfo *image_inf
+             if (logging)
+               (void) LogMagickEvent(CoderEvent,GetMagickModule(),
+                                     "Using RGB tiled read method with %u bits per sample",
+                                     bits_per_sample);
+             /*
+               Obtain tile geometry
+             */
+             if (!(TIFFGetField(tiff,TIFFTAG_TILEWIDTH,&tile_columns) == 1) ||
+-                !(TIFFGetField(tiff,TIFFTAG_TILELENGTH,&tile_rows)) == 1)
++                !(TIFFGetField(tiff,TIFFTAG_TILELENGTH,&tile_rows) == 1))
+               {
+                 TIFFClose(tiff);
+                 ThrowReaderException(CoderError,ImageIsNotTiled,image);
+               }
+             tile_total_pixels=tile_columns*tile_rows;
+             if (logging)
+               {
+                 (void) LogMagickEvent(CoderEvent,GetMagickModule(),"Reading TIFF tiles ...");

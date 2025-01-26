@@ -1,0 +1,177 @@
+# HG changeset patch
+# User Dirk Lemstra <dirk@imagemagick.org>
+# Date 1405884716 -7200
+#      Sun Jul 20 21:31:56 2014 +0200
+# Node ID 76e232a490d13b7523f4c201414c13c1aff962d9
+# Parent  8d0aa3a36d083a9f1fd31f8b593a0817a941351f
+Added method to set a method that will be called when something is being logged.
+
+diff --git a/magick/log.c b/magick/log.c
+--- a/magick/log.c
++++ b/magick/log.c
+@@ -56,17 +56,18 @@ typedef enum
+ { 
+   DisabledOutput = 0x0000,
+   UndefinedOutput = 0x0000,
+   StdoutOutput = 0x0001,
+   StderrOutput = 0x0002,
+   XMLFileOutput = 0x0004,
+   TXTFileOutput = 0x0008,
+   Win32DebugOutput = 0x0010,
+-  Win32EventlogOutput = 0x0020
++  Win32EventlogOutput = 0x0020,
++  MethodOutput = 0x0040
+ } LogOutputType;
+ 
+ typedef struct _OutputInfo
+ {
+   const char *name;
+   LogOutputType mask;
+ } OutputInfo;
+ 
+@@ -93,16 +94,19 @@ typedef struct _LogInfo
+   LogEventType
+     events;
+ 
+   LogOutputType
+     output_type;
+ 
+   TimerInfo
+     timer;
++
++  LogMethod
++    method;
+ } LogInfo;
+ 
+ typedef struct _EventInfo
+ {
+   const char *name;
+   LogEventType mask;
+   int start_type;
+   int end_type;
+@@ -753,16 +757,27 @@ MagickExport  unsigned int LogMagickEven
+             (void) fprintf(file,"%c",*p);
+             break;
+           }
+         }
+       }
+       (void) fprintf(file,"\n");
+       (void) fflush(file);
+     }
++  if ((log_info->output_type & MethodOutput) && (log_info->method != (LogMethod) NULL))
++    {
++      char
++        buffer[MaxTextExtent];
++
++      FormatString(buffer,
++        "%.1024s %ld:%02ld %0.3f %ld %.1024s %.1024s %lu %.1024s %.1024s %.1024s\n",
++          timestamp, (long) (elapsed_time/60.0), (long) ceil(fmod(elapsed_time,60.0)),
++            user_time, (long) getpid(), srcname, function, line, domain, severity, event);
++      log_info->method(type,buffer);
++    }
+   UnlockSemaphoreInfo(log_semaphore);
+   return(True);
+ }
+ MagickExport unsigned int LogMagickEvent(const ExceptionType type,
+   const char *module,const char *function,const unsigned long line,
+   const char *format,...)
+ {
+   unsigned int
+@@ -1106,8 +1121,55 @@ MagickExport void SetLogFormat(const cha
+       GetExceptionInfo(&exception);
+       (void) ReadLogConfigureFile(MagickLogFilename,0,&exception);
+       DestroyExceptionInfo(&exception);
+     }
+ 
+   (void) CloneString(&log_info->format,format);
+   UnlockSemaphoreInfo(log_semaphore);
+ }
++
++/*
++%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
++%                                                                             %
++%                                                                             %
++%                                                                             %
++%   S e t L o g M e t h o d                                                   %
++%                                                                             %
++%                                                                             %
++%                                                                             %
++%                                                                             %
++%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
++%
++%  SetLogMethod() sets the method that should be called when logging.
++%
++%  The format of the SetLogMethod method is:
++%
++%      SetLogFormat(LogMethod)
++%
++%  A description of each parameter follows:
++%
++%    o method: pointer to a method that will be called when LogMagickEvent is
++%      being called.
++%
++%
++*/
++MagickExport void SetLogMethod(LogMethod method)
++{
++  if (log_info == (LogInfo *) NULL)
++    AllocateLogInfo();
++
++  LockSemaphoreInfo(log_semaphore);
++
++  if (log_configured == False)
++    {
++      ExceptionInfo
++        exception;
++
++      GetExceptionInfo(&exception);
++      (void) ReadLogConfigureFile(MagickLogFilename,0,&exception);
++      DestroyExceptionInfo(&exception);
++    }
++  log_info->output_type=(LogOutputType) (log_info->output_type |
++    MethodOutput);
++  log_info->method=method;
++  UnlockSemaphoreInfo(log_semaphore);
++}
+diff --git a/magick/log.h b/magick/log.h
+--- a/magick/log.h
++++ b/magick/log.h
+@@ -66,33 +66,37 @@ typedef enum
+   OptionEventMask        = 0x00004000,
+   InformationEventMask   = 0x00008000,
+   WarningEventMask       = 0x00010000,
+   ErrorEventMask         = 0x00020000,
+   FatalErrorEventMask    = 0x00040000,
+   AllEventsMask          = 0x7FFFFFFF
+ } LogEventType;
+ 
++typedef void
++  (*LogMethod)(const ExceptionType,const char *);
++
+ /*
+   Method declarations.
+ */
+ extern MagickExport MagickBool
+   IsEventLogging(void),
+   LogMagickEvent(const ExceptionType type,
+     const char *module,const char *function,const unsigned long line,
+     const char *format,...) MAGICK_ATTRIBUTE((__format__ (__printf__,5,6))),
+   LogMagickEventList(const ExceptionType type,
+     const char *module,const char *function,const unsigned long line,
+     const char *format,va_list operands);
+ 
+ extern MagickExport unsigned long
+   SetLogEventMask(const char *events);
+ 
+ extern MagickExport void
+-  SetLogFormat(const char *format);
++  SetLogFormat(const char *format),
++  SetLogMethod(LogMethod);
+ 
+ #if defined(MAGICK_IMPLEMENTATION)
+ 
+ extern MagickExport void
+   DestroyLogInfo(void);
+ 
+ extern MagickPassFail
+   InitializeLogInfo(void);

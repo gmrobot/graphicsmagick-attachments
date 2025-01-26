@@ -1,0 +1,57 @@
+diff -ruN GraphicsMagick-1.3.10.orig/magick/utility.c GraphicsMagick-1.3.10/magick/utility.c
+--- GraphicsMagick-1.3.10.orig/magick/utility.c	2010-02-09 07:35:51.000000000 +0700
++++ GraphicsMagick-1.3.10/magick/utility.c	2010-02-17 11:52:54.386879464 +0700
+@@ -3293,14 +3293,14 @@
+ %
+ %
+ */
+-MagickExport int LocaleCompare(const char *p,const char *q)
++MagickExport int LocaleCompare(const unsigned char *p,const unsigned char *q)
+ {
+   int
+     result;
+ 
+-  if (p == (char *) NULL)
++  if (p == (unsigned char *) NULL)
+     result=-1;
+-  else if (q == (char *) NULL)
++  else if (q == (unsigned char *) NULL)
+     result=1;
+   else
+     {
+@@ -3393,7 +3393,8 @@
+ %
+ %
+ */
+-MagickExport int LocaleNCompare(const char *p,const char *q,const size_t length)
++MagickExport int LocaleNCompare(const unsigned char *p,const unsigned char *q,
++                                const size_t length)
+ {
+   register size_t
+     n;
+@@ -3402,9 +3403,9 @@
+     c,
+     d;
+ 
+-  if (p == (char *) NULL)
++  if (p == (unsigned char *) NULL)
+     return(-1);
+-  if (q == (char *) NULL)
++  if (q == (unsigned char *) NULL)
+     return(1);
+   for (n=length; n != 0; n--)
+   {
+diff -ruN GraphicsMagick-1.3.10.orig/magick/utility.h GraphicsMagick-1.3.10/magick/utility.h
+--- GraphicsMagick-1.3.10.orig/magick/utility.h	2010-01-21 06:32:17.000000000 +0700
++++ GraphicsMagick-1.3.10/magick/utility.h	2010-02-17 11:52:53.800718166 +0700
+@@ -93,8 +93,8 @@
+ extern MagickExport int
+   GetGeometry(const char *,long *,long *,unsigned long *,unsigned long *),
+   GlobExpression(const char *,const char *),
+-  LocaleNCompare(const char *,const char *,const size_t),
+-  LocaleCompare(const char *,const char *),
++  LocaleNCompare(const unsigned char *,const unsigned char *,const size_t),
++  LocaleCompare(const unsigned char *,const unsigned char *),
+   GetMagickDimension(const char *str,double *width,double *height,double *xoff,double *yoff),
+   GetMagickGeometry(const char *geometry,long *x,long *y,unsigned long *width,
+     unsigned long *height),

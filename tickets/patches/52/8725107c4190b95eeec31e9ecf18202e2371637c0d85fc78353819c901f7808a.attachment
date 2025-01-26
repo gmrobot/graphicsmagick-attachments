@@ -1,0 +1,196 @@
+diff -up --new-file --recursive GraphicsMagick-1.3.26.orig/coders/webp.c GraphicsMagick-1.3.26/coders/webp.c
+--- GraphicsMagick-1.3.26.orig/coders/webp.c	2017-07-04 23:32:08.000000000 +0200
++++ GraphicsMagick-1.3.26/coders/webp.c	2017-10-16 10:31:30.000000000 +0200
+@@ -44,6 +44,7 @@
+ #include "magick/magick.h"
+ #include "magick/monitor.h"
+ #include "magick/pixel_cache.h"
++#include "magick/profile.h"
+ #include "magick/utility.h"
+ 
+ /*
+@@ -59,6 +60,7 @@ static unsigned int WriteWEBPImage(const
+ #if defined(HasWEBP)
+ #include <webp/decode.h>
+ #include <webp/encode.h>
++#include <webp/mux.h>
+ 
+ /*
+   Release versions vs ABI versions (found in src/webp/encode.h)
+@@ -273,6 +275,32 @@ static Image *ReadWEBPImage(const ImageI
+       if(!SyncImagePixels(image))
+         break;
+     }
++
++  /* Read features out of the WebP container */
++  uint32_t webp_flags=0;
++  WebPData flag_data={0};
++  WebPData content={stream,length};
++
++  WebPMux *mux=WebPMuxCreate(&content,0);
++  WebPMuxGetFeatures(mux,&webp_flags);
++
++  if(webp_flags & ICCP_FLAG) {
++    WebPMuxGetChunk(mux,"ICCP",&flag_data);
++    AppendImageProfile(image,"ICC",flag_data.bytes,flag_data.size);
++  }
++
++  if(webp_flags & EXIF_FLAG) {
++    WebPMuxGetChunk(mux,"EXIF",&flag_data);
++    AppendImageProfile(image,"EXIF",flag_data.bytes,flag_data.size);
++  }
++
++  if(webp_flags & XMP_FLAG) {
++    WebPMuxGetChunk(mux,"XMP",&flag_data);
++    AppendImageProfile(image,"XMP",flag_data.bytes,flag_data.size);
++  }
++
++  WebPMuxDelete(mux);
++
+   /*
+     Free scale resource.
+   */
+@@ -410,19 +438,6 @@ ModuleExport void UnregisterWEBPImage(vo
+ */
+ 
+ /*
+-  Called to write data to blob
+-*/
+-static int WriterCallback(const unsigned char *stream,size_t length,
+-                          const WebPPicture *const picture)
+-{
+-  Image
+-    *image;
+-
+-  image=(Image *) picture->custom_ptr;
+-  return (length != 0 ? (int) WriteBlob(image,length,stream) : 1);
+-}
+-
+-/*
+   Called to provide progress indication
+ */
+ #if defined(SUPPORT_PROGRESS)
+@@ -471,7 +486,10 @@ static unsigned int WriteWEBPImage(const
+     configure;
+ 
+   WebPPicture
+-    picture;
++  picture;
++
++  WebPMemoryWriter
++    writer;
+ 
+   WebPAuxStats
+     statistics;
+@@ -501,8 +519,9 @@ static unsigned int WriteWEBPImage(const
+   (void) TransformColorspace(image,RGBColorspace);
+   image->storage_class=DirectClass;
+ 
+-  picture.writer=WriterCallback;
+-  picture.custom_ptr=(void *) image;
++  WebPMemoryWriterInit(&writer);
++  picture.writer=WebPMemoryWrite;
++  picture.custom_ptr=&writer;
+ #if defined(SUPPORT_PROGRESS)
+   picture.progress_hook=ProgressCallback;
+ #endif
+@@ -707,7 +726,87 @@ static unsigned int WriteWEBPImage(const
+         } /* if (! webp_status) */
+     } /* if (webp_status) */
+ 
++  /* Write profiles */
++  if(image->profiles) {
++    /* Mapping of GraphicsMagick->libwebp feature/profile names */
++    char data_features[][3][6]={{"ICC", "ICCP"},{"EXIF", "EXIF"},{"XMP", "XMP"}};
++    
++    /* Prepare the WebP muxer */
++    WebPMuxError mux_error;
++    WebPMux *mux=WebPMuxNew();
++    WebPData encoded_image={writer.mem,writer.size};
++
++    WebPMuxSetImage(mux,&encoded_image,1);
++
++    /* Iterate over all available features and try to push them into the WebP container */
++    for(size_t idx=0;idx<sizeof(data_features)/sizeof(data_features[0]);idx++) {
++      /* Get feature data */
++      WebPData chunk={0};
++      
++      chunk.bytes=GetImageProfile(image,data_features[idx][0],&chunk.size);
++
++      if(!chunk.bytes)
++        continue;
++
++      /* Write feature data */
++      mux_error=WebPMuxSetChunk(mux,data_features[idx][1],&chunk,0);
++
++      switch(mux_error) {
++        case WEBP_MUX_OK:
++          break;
++          ;;
++        case WEBP_MUX_BAD_DATA:
++        case WEBP_MUX_NOT_ENOUGH_DATA:
++        case WEBP_MUX_NOT_FOUND:
++          ThrowWriterException(CoderError,WebPInvalidParameter,image);
++          break;
++          ;;
++        case WEBP_MUX_INVALID_ARGUMENT:
++          ThrowWriterException(CoderError,WebPEncodingFailedNULLParameter,image);
++          break;
++          ;;
++        case WEBP_MUX_MEMORY_ERROR:
++          ThrowWriterException(CoderError,WebPEncodingFailedOutOfMemory,image);
++          break;
++          ;;
++      }
++    }
++    
++    /* Create the new container */
++    WebPData picture_profiles={writer.mem, writer.size};
++    mux_error=WebPMuxAssemble(mux,&picture_profiles);
++
++    switch (mux_error) {
++      case WEBP_MUX_OK:
++        break;
++        ;;
++      case WEBP_MUX_BAD_DATA:
++      case WEBP_MUX_NOT_ENOUGH_DATA:
++      case WEBP_MUX_NOT_FOUND:
++          ThrowWriterException(CoderError,WebPInvalidParameter,image);
++      case WEBP_MUX_INVALID_ARGUMENT:
++        ThrowWriterException(CoderError,WebPEncodingFailedNULLParameter,image);
++        break;
++        ;;
++      case WEBP_MUX_MEMORY_ERROR:
++        ThrowWriterException(CoderError,WebPEncodingFailedOutOfMemory,image);
++        break;
++        ;;
++      }
++      
++    /* Replace the original data with the container data */
++    WebPMemoryWriterClear(&writer);
++    writer.size=picture_profiles.size;
++    writer.mem=(unsigned char *)picture_profiles.bytes;
++
++    /* Cleanup the muxer */
++    WebPMuxDelete(mux);
++  } /* if (webp_status) */
++
++  /* Write out the data to the blob and cleanup*/
++  WriteBlob(image, writer.size, writer.mem);
+   WebPPictureFree(&picture);
++  WebPMemoryWriterClear(&writer);
+   CloseBlob(image);
+ 
+   return (webp_status ? MagickPass : MagickFail);
+diff -up --new-file --recursive GraphicsMagick-1.3.26.orig/configure.ac GraphicsMagick-1.3.26/configure.ac
+--- GraphicsMagick-1.3.26.orig/configure.ac	2016-09-05 21:20:23.000000000 +0200
++++ GraphicsMagick-1.3.26/configure.ac	2017-10-13 10:54:24.000000000 +0200
+@@ -2435,7 +2435,7 @@ then
+   AC_MSG_RESULT(no -- some components failed test)
+         have_webp='no (failed tests)'
+     else
+-  LIB_WEBP='-lwebp'
++  LIB_WEBP='-lwebp -lwebpmux'
+   LIBS="$LIB_WEBP $LIBS"
+   AC_DEFINE(HasWEBP,1,Define if you have WEBP library)
+   AC_MSG_RESULT(yes)

@@ -1,0 +1,21 @@
+--- magick/attribute.c	2014-01-19 19:16:24.341142299 -0800
++++ magick/attribute.c.orig	2013-04-07 12:20:33.000000000 -0700
+@@ -1049,7 +1049,7 @@
+ #define EXIF_FMT_SRATIONAL  10
+ #define EXIF_FMT_SINGLE  11
+ #define EXIF_FMT_DOUBLE  12
+-#define EXIF_TAG_START  0x0001
++#define EXIF_TAG_START  0x0100
+ #define EXIF_TAG_STOP  0xFFFF
+ #define TAG_EXIF_OFFSET  0x8769
+ #define TAG_INTEROP_OFFSET  0xa005
+@@ -1072,9 +1072,6 @@
+ static const TagInfo
+   tag_table[] =
+   {
+-    {  0x0001, (char *) "InteropIndex"},  // 'R03' = R03 - DCF option file (Adobe RGB) 
+-                                          // 'R98' = R98 - DCF basic file (sRGB) 
+-                                          // 'THM' = THM - DCF thumbnail file
+     {  0x01, (char *) "GPSLatitudeRef"},
+     {  0x02, (char *) "GPSLatitude"},
+     {  0x03, (char *) "GPSLongitudeRef"},

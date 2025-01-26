@@ -1,0 +1,13 @@
+Index: psd.c
+===================================================================
+RCS file: /GraphicsMagick/ImageMagick/coders/psd.c,v
+retrieving revision 1.179
+diff -b -u -2 -r1.179 psd.c
+--- psd.c	2003/03/26 22:50:38	1.179
++++ psd.c	2003/04/17 00:06:57
+@@ -1231,4 +1231,5 @@
+           layer_info[0].image->previous=image;
+ #else
++    DestroyImage(image);
+     returnImage = layer_info[0].image;  
+ #endif

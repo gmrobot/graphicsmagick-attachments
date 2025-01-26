@@ -1,0 +1,1312 @@
+# HG changeset patch
+# User Long Ho <holevietlong@gmail.com>
+# Date 1416286589 18000
+# Node ID 3adfe37f15c54e6fade15114a944ad836e89dc44
+# Parent  2298ce7b65f3ceab8f96d31144b8ef70ec95e2c8
+add resize, extent(Geometry) & extent(Geometry, Color) to Magick++
+
+diff --git a/Magick++/lib/Image.cpp b/Magick++/lib/Image.cpp
+--- a/Magick++/lib/Image.cpp
++++ b/Magick++/lib/Image.cpp
+@@ -345,17 +345,17 @@
+ {
+   ExceptionInfo exceptionInfo;
+   GetExceptionInfo( &exceptionInfo );
+-  
++
+   AffineMatrix _affine;
+   _affine.sx = affine_.sx();
+   _affine.sy = affine_.sy();
+   _affine.rx = affine_.rx();
+   _affine.ry = affine_.ry();
+-  _affine.tx = affine_.tx();  
++  _affine.tx = affine_.tx();
+   _affine.ty = affine_.ty();
+-  
++
+   MagickLib::Image* newImage =
+-    AffineTransformImage( image(), &_affine, &exceptionInfo);     
++    AffineTransformImage( image(), &_affine, &exceptionInfo);
+   replaceImage( newImage );
+   throwException( exceptionInfo );
+ }
+@@ -384,7 +384,7 @@
+ 
+   DrawInfo *drawInfo
+     = options()->drawInfo();
+-  
++
+   drawInfo->text = const_cast<char *>(text_.c_str());
+ 
+   char boundingArea[MaxTextExtent];
+@@ -881,6 +881,28 @@
+   throwImageException();
+ }
+ 
++// Extent image
++void Magick::Image::extent ( const Geometry &geometry_ )
++{
++  RectangleInfo extentInfo = geometry_;
++  extentInfo.x=geometry_.xOff();
++  extentInfo.y=geometry_.yOff();
++
++  ExceptionInfo exceptionInfo;
++  GetExceptionInfo( &exceptionInfo );
++  MagickLib::Image* newImage = ExtentImage( image(), &extentInfo, &exceptionInfo );
++  replaceImage( newImage );
++  throwException( exceptionInfo );
++}
++
++// Extent image to a size & background color
++void Magick::Image::extent ( const Geometry &geometry_,
++                             const Color &backgroundColor_ )
++{
++  backgroundColor( backgroundColor_ );
++  extent( geometry_ );
++}
++
+ // Flip image (reflect each scanline in the vertical direction)
+ void Magick::Image::flip ( void )
+ {
+@@ -1139,7 +1161,7 @@
+   modifyImage();
+   (void) HaldClutImage( image(), clutImage_.constImage() );
+   throwImageException();
+-}   
++}
+ 
+ // Level image channel. Adjust the levels of the image channel by
+ // scaling the values falling between specified white and black points
+@@ -1249,7 +1271,7 @@
+   replaceImage( newImage );
+   throwException( exceptionInfo );
+ }
+-    
++
+ 
+ // Negate image.  Set grayscale_ to true to effect grayscale values
+ // only
+@@ -1348,7 +1370,7 @@
+ {
+   modifyImage();
+ 
+-  unsigned int status = 
++  unsigned int status =
+     ExecuteModuleProcess( name_.c_str(), &image(), argc, argv );
+ 
+   if (status == false)
+@@ -1460,7 +1482,7 @@
+                                       &exceptionInfo );
+   throwImageException();
+ }
+-    
++
+ // Read image into current object
+ void Magick::Image::read ( const std::string &imageSpec_ )
+ {
+@@ -1479,7 +1501,7 @@
+       image->next = 0;
+       next->previous = 0;
+       DestroyImageList( next );
+- 
++
+     }
+   replaceImage( image );
+   throwException( exceptionInfo );
+@@ -1591,6 +1613,26 @@
+   throwException( exceptionInfo );
+ }
+ 
++// Resize images
++void Magick::Image::resize ( const Geometry &geometry_ )
++{
++  long x = 0;
++  long y = 0;
++  unsigned long width = columns();
++  unsigned long height = rows();
++
++  GetMagickGeometry (static_cast<std::string>(geometry_).c_str(),
++          &x, &y,
++          &width, &height );
++
++  ExceptionInfo exceptionInfo;
++  GetExceptionInfo( &exceptionInfo );
++  MagickLib::Image* newImage =
++    ResizeImage( image(), width, height, image()->filter, 1.0, &exceptionInfo );
++  replaceImage( newImage );
++  throwException( exceptionInfo );
++}
++
+ // Roll image
+ void Magick::Image::roll ( const Geometry &roll_ )
+ {
+@@ -1696,7 +1738,7 @@
+ // Segment (coalesce similar image components) by analyzing the
+ // histograms of the color components and identifying units that are
+ // homogeneous with the fuzzy c-means technique.
+-void Magick::Image::segment ( const double clusterThreshold_, 
++void Magick::Image::segment ( const double clusterThreshold_,
+ 			      const double smoothingThreshold_ )
+ {
+   modifyImage();
+@@ -2368,7 +2410,7 @@
+   if (index_ > (MaxColormapSize-1) )
+     throwExceptionExplicit( OptionError,
+                             "Colormap index must be less than MaxColormapSize" );
+-  
++
+   if ( !color_.isValid() )
+     throwExceptionExplicit( OptionError,
+ 			    "Color argument is invalid");
+@@ -2686,9 +2728,9 @@
+   fileName_.copy( image()->filename,
+ 		  sizeof(image()->filename) - 1 );
+   image()->filename[ fileName_.length() ] = 0; // Null terminate
+-  
++
+   options()->fileName( fileName_ );
+-  
++
+ }
+ std::string Magick::Image::fileName ( void ) const
+ {
+@@ -2736,7 +2778,7 @@
+ {
+   // FIXME: This is inordinately innefficient
+   Image texture;
+-  
++
+   const MagickLib::Image* tmpTexture = constOptions()->fillPattern( );
+ 
+   if ( tmpTexture )
+@@ -2807,7 +2849,7 @@
+     = GetMagickInfo( constImage()->magick, &exceptionInfo);
+   throwException( exceptionInfo );
+ 
+-  if (( magick_info != 0 ) && 
++  if (( magick_info != 0 ) &&
+       ( *magick_info->description != '\0' ))
+     return std::string(magick_info->description);
+ 
+@@ -2956,7 +2998,7 @@
+   magick_.copy( image()->magick,
+ 		sizeof(image()->magick) - 1 );
+   image()->magick[ magick_.length() ] = 0;
+-  
++
+   options()->magick( magick_ );
+ }
+ std::string Magick::Image::magick ( void ) const
+@@ -2992,11 +3034,11 @@
+ void Magick::Image::matteColor ( const Color &matteColor_ )
+ {
+   modifyImage();
+-  
++
+   if ( matteColor_.isValid() )
+     {
+       image()->matte_color = matteColor_;
+-      options()->matteColor( matteColor_ ); 
++      options()->matteColor( matteColor_ );
+     }
+   else
+     {
+@@ -3101,7 +3143,7 @@
+ {
+   // FIXME: This is inordinately innefficient
+   Image texture;
+-  
++
+   const MagickLib::Image* tmpTexture = constOptions()->fillPattern( );
+ 
+   if ( tmpTexture )
+@@ -3128,7 +3170,7 @@
+   if ( y_ > rows() || x_ > columns() )
+     throwExceptionExplicit( OptionError,
+                             "Access outside of image boundary" );
+-      
++
+   modifyImage();
+ 
+   // Set image to DirectClass
+@@ -3213,7 +3255,7 @@
+ 
+   if (data)
+     return Blob(data, length);
+-  
++
+   Blob blob;
+   Image temp_image = *this;
+   temp_image.write( &blob, name_ );
+@@ -3453,7 +3495,7 @@
+ {
+   // FIXME: This is inordinately innefficient
+   Image texture;
+-  
++
+   const MagickLib::Image* tmpTexture = constOptions()->strokePattern( );
+ 
+   if ( tmpTexture )
+@@ -3673,7 +3715,7 @@
+   return *this;
+ }
+ 
+-//////////////////////////////////////////////////////////////////////    
++//////////////////////////////////////////////////////////////////////
+ //
+ // Low-level Pixel Access Routines
+ //
+@@ -3871,7 +3913,7 @@
+   ( MagickLib::Image* replacement_ )
+ {
+   MagickLib::Image* image;
+-  
++
+   if( replacement_ )
+     image = replacement_;
+   else
+diff --git a/Magick++/lib/Magick++/Image.h b/Magick++/lib/Magick++/Image.h
+--- a/Magick++/lib/Magick++/Image.h
++++ b/Magick++/lib/Magick++/Image.h
+@@ -59,7 +59,7 @@
+   public:
+     // Construct from image file or image specification
+     Image( const std::string &imageSpec_ );
+-    
++
+     // Construct a blank image canvas of specified size and color
+     Image( const Geometry &size_, const Color &color_ );
+ 
+@@ -93,13 +93,13 @@
+ 
+     // Default constructor
+     Image( void );
+-    
++
+     // Destructor
+     virtual ~Image();
+-    
++
+     /// Copy constructor
+     Image ( const Image & image_ );
+-    
++
+     // Assignment operator
+     Image& operator= ( const Image &image_ );
+ 
+@@ -158,7 +158,7 @@
+     // gravity.
+     void            annotate ( const std::string &text_,
+ 			       const GravityType gravity_ );
+-    
++
+     // Blur image with specified blur factor
+     // The radius_ parameter specifies the radius of the Gaussian, in
+     // pixels, not counting the center pixel.  The sigma_ parameter
+@@ -200,7 +200,7 @@
+     // horizontal or vertical subregion of image.
+ 
+     void            chop ( const Geometry &geometry_ );
+-    
++
+     // Colorize image with pen color, using specified percent opacity
+     // for red, green, and blue quantums
+     void            colorize ( const unsigned int opacityRed_,
+@@ -215,7 +215,7 @@
+     // matrix may be of order 1 to 5 (1x1 through 5x5).
+     void            colorMatrix (const unsigned int order_,
+ 				 const double *color_matrix_);
+-    
++
+     // Comment image (add comment string to image)
+     void            comment ( const std::string &comment_ );
+ 
+@@ -239,7 +239,7 @@
+ 				const GravityType gravity_,
+ 				const CompositeOperator compose_
+                                 = InCompositeOp );
+-    
++
+     // Contrast image (enhance intensity differences in image)
+     void            contrast ( const unsigned int sharpen_ );
+ 
+@@ -251,41 +251,45 @@
+ 
+     // Crop image (subregion of original image)
+     void            crop ( const Geometry &geometry_ );
+-    
++
+     // Cycle image colormap
+     void            cycleColormap ( const int amount_ );
+-    
++
+     // Despeckle image (reduce speckle noise)
+     void            despeckle ( void );
+-    
++
+     // Display image on screen
+     void            display ( void );
+-    
++
+     // Draw on image using a single drawable
+     void            draw ( const Drawable &drawable_ );
+ 
+     // Draw on image using a drawable list
+     void            draw ( const std::list<Magick::Drawable> &drawable_ );
+-    
++
+     // Edge image (hilight edges in image)
+     void            edge ( const double radius_ = 0.0 );
+-    
++
+     // Emboss image (hilight edges with 3D effect)
+     // The radius_ parameter specifies the radius of the Gaussian, in
+     // pixels, not counting the center pixel.  The sigma_ parameter
+     // specifies the standard deviation of the Laplacian, in pixels.
+     void            emboss ( const double radius_ = 0.0,
+                              const double sigma_ = 1.0);
+-    
++
+     // Enhance image (minimize noise)
+     void            enhance ( void );
+-    
++
+     // Equalize image (histogram equalization)
+     void            equalize ( void );
+ 
+     // Erase image to current "background color"
+     void            erase ( void );
+-    
++
++    // Extent image size with combination of background color & gravity types
++    void            extent ( const Geometry &geometry_ );
++    void            extent ( const Geometry &geometry_, const Color &backgroundColor_ );
++
+     // Flip image (reflect each scanline in the vertical direction)
+     void            flip ( void );
+ 
+@@ -335,17 +339,17 @@
+     void            floodFillTexture( const Geometry &point_,
+ 				      const Image &texture_,
+ 				      const Color &borderColor_ );
+-    
++
+     // Flop image (reflect each scanline in the horizontal direction)
+     void            flop ( void );
+-    
++
+     // Frame image
+     void            frame ( const Geometry &geometry_ = frameGeometryDefault );
+     void            frame ( const unsigned int width_,
+                             const unsigned int height_,
+ 			    const int innerBevel_ = 6,
+                             const int outerBevel_ = 6 );
+-    
++
+     // Gamma correct image
+     void            gamma ( const double gamma_ );
+     void            gamma ( const double gammaRed_,
+@@ -359,13 +363,13 @@
+     void            gaussianBlur ( const double width_, const double sigma_ );
+     void            gaussianBlurChannel ( const ChannelType channel_,
+                                           const double width_, const double sigma_ );
+-    
++
+     // Implode image (special effect)
+     void            implode ( const double factor_ );
+ 
+     // Apply a color lookup table (Hald CLUT) to the image.
+     void            haldClut ( const Image &clutImage_ );
+-    
++
+     // Label image
+     void            label ( const std::string &label_ );
+ 
+@@ -402,11 +406,11 @@
+ 
+     // Magnify image by integral size
+     void            magnify ( void );
+-    
++
+     // Remap image colors with closest color from reference image
+     void            map ( const Image &mapImage_ ,
+                           const bool dither_ = false );
+-    
++
+     // Floodfill designated area with replacement opacity value
+     void            matteFloodfill ( const Color &target_ ,
+ 				     const unsigned int opacity_,
+@@ -416,10 +420,10 @@
+     // Filter image by replacing each pixel component with the median
+     // color in a circular neighborhood
+     void            medianFilter ( const double radius_ = 0.0 );
+-    
++
+     // Reduce image by integral size
+     void            minify ( void );
+-    
++
+     // Modulate percent hue, saturation, and brightness of an image.
+     // Modulation of saturation and brightness is as a ratio of the
+     // current value (1.0 for no change). Modulation of hue is an
+@@ -439,15 +443,15 @@
+     void            motionBlur ( const double radius_,
+                                  const double sigma_,
+                                  const double angle_ );
+-    
++
+     // Negate colors in image.  Set grayscale to only negate grayscale
+     // values in image.
+     void            negate ( const bool grayscale_ = false );
+-    
++
+     // Normalize image (increase contrast by normalizing the pixel
+     // values to span the full range of color values)
+     void            normalize ( void );
+-    
++
+     // Oilpaint image (image looks like oil painting)
+     void            oilPaint ( const double radius_ = 3.0 );
+ 
+@@ -469,7 +473,7 @@
+     // columns(), rows(), and fileSize() attributes after invoking
+     // ping.  The image data is not valid after calling ping.
+     void            ping ( const std::string &imageSpec_ );
+-    
++
+     // Ping is similar to read except only enough of the image is read
+     // to determine the image columns, rows, and filesize.  Access the
+     // columns(), rows(), and fileSize() attributes after invoking
+@@ -525,7 +529,7 @@
+     void            randomThreshold( const Geometry &thresholds_ );
+     void            randomThresholdChannel( const Geometry &thresholds_,
+                                             const ChannelType channel_ );
+-    
++
+     // Read single image frame into current object
+     void            read ( const std::string &imageSpec_ );
+ 
+@@ -571,38 +575,41 @@
+     // Reduce noise in image using a noise peak elimination filter
+     void            reduceNoise ( void );
+     void            reduceNoise ( const double order_ );
+-    
++
++    // Resize image
++    void            resize ( const Geometry &geometry_ );
++
+     // Roll image (rolls image vertically and horizontally) by specified
+     // number of columnms and rows)
+     void            roll ( const Geometry &roll_ );
+     void            roll ( const unsigned int columns_,
+ 			   const unsigned int rows_ );
+-    
++
+     // Rotate image counter-clockwise by specified number of degrees.
+     void            rotate ( const double degrees_ );
+-    
++
+     // Resize image by using pixel sampling algorithm
+     void            sample ( const Geometry &geometry_ );
+-    
++
+     // Resize image by using simple ratio algorithm
+     void            scale ( const Geometry &geometry_ );
+ 
+     // Resize image using several algorithms to make smaller images
+     // very quickly.
+     void            thumbnail ( const Geometry &geometry_ );
+-    
++
+     // Segment (coalesce similar image components) by analyzing the
+     // histograms of the color components and identifying units that
+     // are homogeneous with the fuzzy c-means technique.  Also uses
+     // QuantizeColorSpace and Verbose image attributes
+-    void            segment ( const double clusterThreshold_ = 1.0, 
++    void            segment ( const double clusterThreshold_ = 1.0,
+ 			      const double smoothingThreshold_ = 1.5 );
+-    
++
+     // Shade image using distant light source
+     void            shade ( const double azimuth_ = 30,
+ 			    const double elevation_ = 30,
+ 			    const bool   colorShading_ = false );
+-    
++
+     // Sharpen pixels in image
+     // The radius_ parameter specifies the radius of the Gaussian, in
+     // pixels, not counting the center pixel.  The sigma_ parameter
+@@ -615,39 +622,39 @@
+ 
+     // Shave pixels from image edges.
+     void            shave ( const Geometry &geometry_ );
+-    
++
+     // Shear image (create parallelogram by sliding image by X or Y axis)
+     void            shear ( const double xShearAngle_,
+ 			    const double yShearAngle_ );
+-    
++
+     // Solarize image (similar to effect seen when exposing a
+     // photographic film to light during the development process)
+     void            solarize ( const double factor_ = 50.0 );
+-    
++
+     // Spread pixels randomly within image by specified ammount
+     void            spread ( const unsigned int amount_ = 3 );
+-    
++
+     // Add a digital watermark to the image (based on second image)
+     void            stegano ( const Image &watermark_ );
+-    
++
+     // Create an image which appears in stereo when viewed with
+     // red-blue glasses (Red image on left, blue on right)
+     void            stereo ( const Image &rightImage_ );
+ 
+     // Remove all profiles and text attributes from the image.
+     void            strip ( void );
+-    
++
+     // Swirl image (image pixels are rotated by degrees)
+     void            swirl ( const double degrees_ );
+-    
++
+     // Channel a texture on image background
+     void            texture ( const Image &texture_ );
+-    
++
+     // Threshold image channels (below threshold becomes black, above
+     // threshold becomes white).
+     // The range of the threshold parameter is 0 to MaxRGB.
+     void            threshold ( const double threshold_ );
+-    
++
+     // Transform image based on image and crop geometries
+     // Crop geometry is optional
+     void            transform ( const Geometry &imageGeometry_ );
+@@ -657,7 +664,7 @@
+     // Add matte image to image, setting pixels matching color to
+     // transparent
+     void            transparent ( const Color &color_ );
+-    
++
+     // Trim edges that are the background color from the image
+     void            trim ( void );
+ 
+@@ -693,7 +700,7 @@
+     // Map image pixels to a sine wave
+     void            wave ( const double amplitude_ = 25.0,
+                            const double wavelength_ = 150.0 );
+-    
++
+     // Write single image frame to a file
+     void            write ( const std::string &imageSpec_ );
+ 
+@@ -716,7 +723,7 @@
+                             const std::string& map_,
+                             const StorageType type_,
+                             void *pixels_ );
+-    
++
+     // Zoom image to specified size.
+     void            zoom ( const Geometry &geometry_ );
+ 
+@@ -729,16 +736,16 @@
+     // Join images into a single multi-image file
+     void            adjoin ( const bool flag_ );
+     bool            adjoin ( void ) const;
+-    
++
+     // Anti-alias Postscript and TrueType fonts (default true)
+     void            antiAlias( const bool flag_ );
+     bool            antiAlias( void );
+-    
++
+     // Time in 1/100ths of a second which must expire before
+     // displaying the next image in an animated sequence.
+     void            animationDelay ( const unsigned int delay_ );
+     unsigned int    animationDelay ( void ) const;
+-    
++
+     // Number of iterations to loop an animation (e.g. Netscape loop
+     // extension) for.
+     void            animationIterations ( const unsigned int iterations_ );
+@@ -748,24 +755,24 @@
+     void            attribute ( const std::string name_,
+                                 const std::string value_ );
+     std::string     attribute ( const std::string name_ );
+-    
++
+     // Image background color
+     void            backgroundColor ( const Color &color_ );
+     Color           backgroundColor ( void ) const;
+-    
++
+     // Name of texture image to tile onto the image background
+     void            backgroundTexture (const std::string &backgroundTexture_ );
+     std::string     backgroundTexture ( void ) const;
+-    
++
+     // Base image width (before transformations)
+     unsigned int    baseColumns ( void ) const;
+-    
++
+     // Base image filename (before transformations)
+     std::string     baseFilename ( void ) const;
+-    
++
+     // Base image height (before transformations)
+     unsigned int    baseRows ( void ) const;
+-    
++
+     // Image border color
+     void            borderColor ( const Color &color_ );
+     Color           borderColor ( void ) const;
+@@ -774,7 +781,7 @@
+     // current fuzz value is used when discriminating between pixels.
+     // This is the crop bounding box used by crop(Geometry(0,0));
+     Geometry        boundingBox ( void ) const;
+-    
++
+     // Text bounding-box base color (default none)
+     void            boxColor ( const Color &boxColor_ );
+     Color           boxColor ( void ) const;
+@@ -783,23 +790,23 @@
+     // is exceeded, all subsequent pixels cache operations are to/from
+     // disk.  This setting is shared by all Image objects.
+     static void     cacheThreshold ( const unsigned int threshold_ );
+-    
++
+     // Chromaticity blue primary point (e.g. x=0.15, y=0.06)
+     void            chromaBluePrimary ( const double x_, const double y_ );
+     void            chromaBluePrimary ( double *x_, double *y_ ) const;
+-    
++
+     // Chromaticity green primary point (e.g. x=0.3, y=0.6)
+     void            chromaGreenPrimary ( const double x_, const double y_ );
+     void            chromaGreenPrimary ( double *x_, double *y_ ) const;
+-    
++
+     // Chromaticity red primary point (e.g. x=0.64, y=0.33)
+     void            chromaRedPrimary ( const double x_, const double y_ );
+     void            chromaRedPrimary ( double *x_, double *y_ ) const;
+-    
++
+     // Chromaticity white point (e.g. x=0.3127, y=0.329)
+     void            chromaWhitePoint ( const double x_, const double y_ );
+     void            chromaWhitePoint ( double *x_, double *y_ ) const;
+-    
++
+     // Image class (DirectClass or PseudoClass)
+     // NOTE: setting a DirectClass image to PseudoClass will result in
+     // the loss of color information if the number of colors in the
+@@ -814,11 +821,11 @@
+     // existing clip mask.
+     void            clipMask ( const Image & clipMask_ );
+     Image           clipMask ( void  ) const;
+-    
++
+     // Colors within this distance are considered equal
+     void            colorFuzz ( const double fuzz_ );
+     double          colorFuzz ( void ) const;
+-    
++
+     // Color at colormap position index_
+     void            colorMap ( const unsigned int index_,
+                                const Color &color_ );
+@@ -834,7 +841,7 @@
+ 
+     // Image width
+     unsigned int    columns ( void ) const;
+-    
++
+     // Image comment
+     std::string     comment ( void ) const;
+ 
+@@ -842,7 +849,7 @@
+     // used (such as for image flattening).
+     void            compose (const CompositeOperator compose_);
+     CompositeOperator compose ( void ) const;
+-    
++
+     // Compression type
+     void            compressType ( const CompressionType compressType_ );
+     CompressionType compressType ( void ) const;
+@@ -970,15 +977,15 @@
+     // File type magick identifier (.e.g "GIF")
+     void            magick ( const std::string &magick_ );
+     std::string     magick ( void ) const;
+-    
++
+     // Image supports transparency (matte channel)
+     void            matte ( const bool matteFlag_ );
+     bool            matte ( void ) const;
+-    
++
+     // Transparent color
+     void            matteColor ( const Color &matteColor_ );
+     Color           matteColor ( void ) const;
+-    
++
+     // The mean error per pixel computed when an image is color reduced
+     double          meanErrorPerPixel ( void ) const;
+ 
+@@ -1039,15 +1046,15 @@
+     // JPEG/MIFF/PNG compression level (default 75).
+     void            quality ( const unsigned int quality_ );
+     unsigned int    quality ( void ) const;
+-    
++
+     // Maximum number of colors to quantize to
+     void            quantizeColors ( const unsigned int colors_ );
+     unsigned int    quantizeColors ( void ) const;
+-    
++
+     // Colorspace to quantize in.
+     void            quantizeColorSpace ( const ColorspaceType colorSpace_ );
+     ColorspaceType  quantizeColorSpace ( void ) const;
+-    
++
+     // Dither image during quantization (default true).
+     void            quantizeDither ( const bool ditherFlag_ );
+     bool            quantizeDither ( void ) const;
+@@ -1076,7 +1083,7 @@
+     // modified.
+     std::string     signature ( const bool force_ = false ) const;
+ 
+-    // Width and height of a raw image 
++    // Width and height of a raw image
+     void            size ( const Geometry &geometry_ );
+     Geometry        size ( void ) const;
+ 
+@@ -1114,7 +1121,7 @@
+     // RoundCap, and SquareCap.
+     void            strokeLineCap ( const LineCap lineCap_ );
+     LineCap         strokeLineCap ( void ) const;
+-    
++
+     // Specify the shape to be used at the corners of paths (or other
+     // vector shapes) when they are stroked. Values of LineJoin are
+     // UndefinedJoin, MiterJoin, RoundJoin, and BevelJoin.
+@@ -1185,7 +1192,7 @@
+     // Print detailed information about the image
+     void            verbose ( const bool verboseFlag_ );
+     bool            verbose ( void ) const;
+-    
++
+     // FlashPix viewing parameters
+     void            view ( const std::string &view_ );
+     std::string     view ( void ) const;
+@@ -1201,7 +1208,7 @@
+     // y resolution of the image
+     double          yResolution ( void ) const;
+ 
+-    //////////////////////////////////////////////////////////////////////    
++    //////////////////////////////////////////////////////////////////////
+     //
+     // Low-level Pixel Access Routines
+     //
+@@ -1246,14 +1253,14 @@
+     // Used to support image decoders.
+     void readPixels ( const QuantumType quantum_,
+ 		      const unsigned char *source_ );
+-    
++
+     // Transfers one or more pixel components from the image pixel
+     // cache to a buffer or file.
+     // Used to support image encoders.
+     void writePixels ( const QuantumType quantum_,
+ 		       unsigned char *destination_ );
+ 
+-    //////////////////////////////////////////////////////////////////////    
++    //////////////////////////////////////////////////////////////////////
+     //
+     // No user-serviceable parts beyond this point
+     //
+diff --git a/PerlMagick/Makefile.PL b/PerlMagick/Makefile.PL
+--- a/PerlMagick/Makefile.PL
++++ b/PerlMagick/Makefile.PL
+@@ -1,4 +1,4 @@
+-# Copyright (C) 2003 GraphicsMagick Group
++# Copyright (C) 2003-2010 GraphicsMagick Group
+ # Copyright (C) 2002 ImageMagick Studio
+ # Copyright (C) 1998,1999 E. I. du Pont de Nemours and Company
+ #
+@@ -14,10 +14,21 @@
+ use ExtUtils::MakeMaker;
+ use Config;
+ 
++my $magick_CPPFLAGS='-I/usr/local/Cellar/freetype/2.5.3_1/include/freetype2 -I/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.10.sdk/usr/include/libxml2';
++my $magick_DEFS=' -D_LARGE_FILES=1 -DHAVE_CONFIG_H';
++my $magick_CFLAGS='-g -O2 -Wall -D_THREAD_SAFE';
++my $magick_CC='gcc';
++my $magick_CPPFLAGS='-I../ -I.. -I/usr/local/Cellar/freetype/2.5.3_1/include/freetype2 -I/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.10.sdk/usr/include/libxml2';
++my $magick_LDFLAGS='-L/usr/local/Cellar/freetype/2.5.3_1/lib -L/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.10.sdk/usr/lib';
++my $magick_BIN_DIR="$ENV{'DESTDIR'}/usr/local/bin";
++my $magick_DEP_LIBS='-lfreetype -lbz2 -lxml2 -lz -lm -lpthread';
++my $magick_PERLMAINCC='';
++my $magick_LIB_DIR="$ENV{'DESTDIR'}/usr/local/lib";
++
+ # Compute test specification
+ my $delegate_tests='t/*.t';
+ my $delegate;
+-foreach $delegate (qw/ bzlib jbig jng jp2 jpeg lcms png ps tiff ttf wmf x xfig zlib/) {
++foreach $delegate (qw/bzlib ttf xml zlib/) {
+   if( -d "t/$delegate" ) {
+     $delegate_tests .= " t/$delegate/*.t";
+   }
+@@ -40,34 +51,34 @@
+    'VERSION'   => '1.4',
+ 
+    # Preprocessor defines
+-   'DEFINE'	=> ' -D_FILE_OFFSET_BITS=64 -D_LARGE_FILES=1  -DHAVE_CONFIG_H',     # e.g., '-DHAVE_SOMETHING' 
++   'DEFINE'	=> $magick_DEFS,     # e.g., '-DHAVE_SOMETHING' 
+ 
+    # Header search specfication and preprocessor flags
+-   'INC'	=> '-I../ -I/home/bfriesen/src/graphics/GraphicsMagick-head -I/usr/local/include/freetype2 -I/usr/openwin/include -I/usr/openwin/include/X11 -I/usr/include/libxml2',
++   'INC'	=> $magick_CPPFLAGS,
+ 
+    # C compiler
+-   'CC'	        => 'gcc-4.4.3 -std=gnu99',
++   'CC'	        => $magick_CC,
+ 
+    # C pre-processor flags (e.g. -I & -D options)
+-   # 'CPPFLAGS'    => "$Config{'cppflags'} -I/usr/local/include/freetype2 -I/usr/openwin/include -I/usr/openwin/include/X11 -I/usr/include/libxml2",
++   # 'CPPFLAGS'    => "$Config{'cppflags'} $magick_CPPFLAGS",
+ 
+    # C compiler flags (e.g. -O -g)
+-   'CCFLAGS'     => "$Config{'ccflags'} -fopenmp -march=opteron-sse3 -O2 -g -Wall -Winline -W -Wformat-security -Wpointer-arith -Wdisabled-optimization -Wmissing-noreturn -Wno-unknown-pragmas -Wall -D_REENTRANT -pthreads",
++   'CCFLAGS'     => "$Config{'ccflags'} $magick_CFLAGS",
+ 
+    # Linker
+-   'LD'          => $Config{'ld'} == $Config{'cc'} ? 'gcc-4.4.3 -std=gnu99' : $Config{'ld'},
++   'LD'          => $Config{'ld'} == $Config{'cc'} ? $magick_CC : $Config{'ld'},
+ 
+    # Linker flags for building an executable
+-   'LDFLAGS'    =>  "-L/home/bfriesen/build/GraphicsMagick-16-static/magick/.libs $Config{'ldflags'}",
++   'LDFLAGS'    =>  "-L$magick_LIB_DIR $Config{'ldflags'}",
+ 
+    # Linker flags for building a dynamically loadable module
+-   'LDDLFLAGS'  => "-L/home/bfriesen/build/GraphicsMagick-16-static/magick/.libs $Config{'lddlflags'}",
++   'LDDLFLAGS'  => "-L$magick_LIB_DIR $Config{'lddlflags'}",
+ 
+    # Install PerlMagick binary into GraphicsMagick bin directory
+-   'INSTALLBIN'	=> '/usr/local/bin',
++   'INSTALLBIN'	=> $magick_BIN_DIR,
+ 
+    # Library specification
+-   'LIBS'	=> ['-L/home/bfriesen/build/GraphicsMagick-16-static/magick/.libs -lGraphicsMagick -Wl,-zlazyload -L/usr/local/lib -R/usr/local/lib -L/usr/local/lib -R/usr/local/lib -L/usr/openwin/lib -R/usr/openwin/lib -L/usr/local/lib -L/usr/lib -ljbig -llcms -ltiff -lfreetype -ljasper -ljpeg -lpng -lwmflite -ldpstk -ldps -lXext -lSM -lICE -lX11 -lsocket -lnsl -lbz2 -lxml2 -lz -lm -lgomp -lpthread'],
++   'LIBS'	=> ["-L$magick_LIB_DIR -lGraphicsMagick $magick_LDFLAGS $magick_DEP_LIBS"],
+ 
+    # Perl binary name (if a Perl binary is built)
+    'MAP_TARGET'	=> 'PerlMagick',
+@@ -76,7 +87,7 @@
+    # 'OPTIMIZE'	=> '',
+ 
+    # Use same compiler as GraphicsMagick
+-   'PERLMAINCC'	=> 'gcc-4.4.3',
++   'PERLMAINCC'	=> $magick_PERLMAINCC,
+ 
+    # Set Perl installation prefix to GraphicsMagick installation prefix
+ #   'PREFIX'	=> '/usr/local',
+@@ -101,7 +112,7 @@
+      # tries to insert our library path first. Also, use the same compiler used
+      # to build perlmain.c to link so that a C++ compiler may be used if
+      # necessary.
+-     $inherited =~ s:MAP_LINKCMD\s.*\s*\$\(CC\):MAP_LINKCMD   = \$(PERLMAINCC) -L/home/bfriesen/build/GraphicsMagick-16-static/magick/.libs: ;
++     $inherited =~ s:MAP_LINKCMD\s.*\s*\$\(CC\):MAP_LINKCMD   = \$(PERLMAINCC) -L/usr/local/lib: ;
+      $inherited;
+  }
+ 
+@@ -113,6 +124,6 @@
+ #     my $inherited = shift->SUPER::test(@_);
+ #
+      # Run tests in our environment
+-#     $inherited =~ s:PERL_DL_NONLAZY=1:/bin/bash ../rungm.sh PERL_DL_NONLAZY=1:g ;
++#     $inherited =~ s:PERL_DL_NONLAZY=1:/bin/sh ../rungm.sh PERL_DL_NONLAZY=1:g ;
+ #     $inherited;
+ # }
+# HG changeset patch
+# User Long Ho <holevietlong@gmail.com>
+# Date 1416518794 28800
+# Node ID a30d8c43e552cda079814b1bdac24cb25d74368f
+# Parent  3adfe37f15c54e6fade15114a944ad836e89dc44
+add _fillArea to Geometry.cpp
+add extent (Geometry, GravityType)
+
+diff --git a/Magick++/lib/Geometry.cpp b/Magick++/lib/Geometry.cpp
+--- a/Magick++/lib/Geometry.cpp
++++ b/Magick++/lib/Geometry.cpp
+@@ -34,7 +34,8 @@
+ 	  ( left_.percent()   == right_.percent() ) &&
+ 	  ( left_.aspect()    == right_.aspect() ) &&
+ 	  ( left_.greater()   == right_.greater() ) &&
+-	  ( left_.less()      == right_.less() )
++	  ( left_.less()      == right_.less() ) &&
++    ( left_.fillArea()  == right_.fillArea() )
+ 	  );
+ }
+ int Magick::operator != ( const Magick::Geometry& left_,
+@@ -84,7 +85,8 @@
+     _percent( false ),
+     _aspect( false ),
+     _greater( false ),
+-    _less( false )
++    _less( false ),
++    _fillArea( false )
+ {
+ }
+ 
+@@ -100,7 +102,8 @@
+     _percent( false ),
+     _aspect( false ),
+     _greater( false ),
+-    _less( false )
++    _less( false ),
++    _fillArea( false )
+ {
+   *this = geometry_; // Use assignment operator
+ }
+@@ -118,7 +121,8 @@
+     _percent( false ),
+     _aspect( false ),
+     _greater( false ),
+-    _less( false )
++    _less( false ),
++    _fillArea( false )
+ {
+   *this = geometry_; // Use assignment operator
+ }
+@@ -135,7 +139,8 @@
+      _percent( geometry_._percent ),
+      _aspect( geometry_._aspect ),
+      _greater( geometry_._greater ),
+-     _less( geometry_._less )
++     _less( geometry_._less ),
++     _fillArea( geometry_._fillArea )
+ {
+ }
+ 
+@@ -151,7 +156,8 @@
+     _percent( false ),
+     _aspect( false ),
+     _greater( false ),
+-    _less( false )
++    _less( false ),
++    _fillArea( false )
+ {
+ }
+ 
+@@ -176,6 +182,7 @@
+       _aspect = geometry_._aspect;
+       _greater = geometry_._greater;
+       _less = geometry_._less;
++      _fillArea = geometry_._fillArea;
+     }
+   return *this;
+ }
+@@ -239,7 +246,7 @@
+       isValid( true );
+     }
+ 
+-  if ( ( flags & XNegative ) != 0 )	
++  if ( ( flags & XNegative ) != 0 )
+     _xNegative = true;
+ 
+   if ( ( flags & YNegative ) != 0 )
+@@ -257,6 +264,9 @@
+   if ( ( flags & GreaterValue ) != 0 )
+     _greater = true;
+ 
++  if ( ( flags & MinimumValue ) != 0 )
++    _fillArea= true;
++
+   return *this;
+ }
+ 
+@@ -313,7 +323,7 @@
+ 
+   if ( _percent )
+     geometry += '%';
+-  
++
+   if ( _aspect )
+     geometry += '!';
+ 
+@@ -323,6 +333,9 @@
+   if ( _less )
+     geometry += '<';
+ 
++  if ( _fillArea )
++    geometry += '^';
++
+   return geometry;
+ }
+ 
+@@ -338,8 +351,9 @@
+     _percent(false),
+     _aspect(false),
+     _greater(false),
+-    _less(false)
+-{    
++    _less(false),
++    _fillArea(false)
++{
+ }
+ 
+ // Return an ImageMagick RectangleInfo struct
+diff --git a/Magick++/lib/Image.cpp b/Magick++/lib/Image.cpp
+--- a/Magick++/lib/Image.cpp
++++ b/Magick++/lib/Image.cpp
+@@ -884,18 +884,31 @@
+ // Extent image
+ void Magick::Image::extent ( const Geometry &geometry_ )
+ {
+-  RectangleInfo extentInfo = geometry_;
+-  extentInfo.x=geometry_.xOff();
+-  extentInfo.y=geometry_.yOff();
++  RectangleInfo geometry;
++
++  (void) GetImageGeometry(image(), static_cast<std::string>(geometry_).c_str(), MagickFalse, &geometry);
++  if (geometry.width == 0)
++    geometry.width = columns();
++  if (geometry.height == 0)
++    geometry.height = rows();
++  geometry.x = (-geometry.x);
++  geometry.y = (-geometry.y);
+ 
+   ExceptionInfo exceptionInfo;
+   GetExceptionInfo( &exceptionInfo );
+-  MagickLib::Image* newImage = ExtentImage( image(), &extentInfo, &exceptionInfo );
++  MagickLib::Image* newImage = ExtentImage( image(), &geometry, &exceptionInfo );
+   replaceImage( newImage );
+   throwException( exceptionInfo );
+ }
+ 
+-// Extent image to a size & background color
++void Magick::Image::extent ( const Geometry &geometry_,
++                             const GravityType &gravity_ )
++{
++
++  image()->gravity=gravity_;
++  extent( geometry_ );
++}
++
+ void Magick::Image::extent ( const Geometry &geometry_,
+                              const Color &backgroundColor_ )
+ {
+@@ -903,6 +916,14 @@
+   extent( geometry_ );
+ }
+ 
++void Magick::Image::extent ( const Geometry &geometry_,
++                             const Color &backgroundColor_,
++                             const GravityType &gravity_ )
++{
++  backgroundColor( backgroundColor_ );
++  extent( geometry_, gravity_ );
++}
++
+ // Flip image (reflect each scanline in the vertical direction)
+ void Magick::Image::flip ( void )
+ {
+@@ -1616,19 +1637,20 @@
+ // Resize images
+ void Magick::Image::resize ( const Geometry &geometry_ )
+ {
++
+   long x = 0;
+   long y = 0;
+   unsigned long width = columns();
+   unsigned long height = rows();
+ 
+-  GetMagickGeometry (static_cast<std::string>(geometry_).c_str(),
+-          &x, &y,
+-          &width, &height );
++  GetMagickGeometry ( static_cast<std::string>(geometry_).c_str(),
++                      &x, &y,
++                      &width, &height );
+ 
+   ExceptionInfo exceptionInfo;
+   GetExceptionInfo( &exceptionInfo );
+   MagickLib::Image* newImage =
+-    ResizeImage( image(), width, height, image()->filter, 1.0, &exceptionInfo );
++    ResizeImage( image(), width, height, image()->filter, image()->blur, &exceptionInfo );
+   replaceImage( newImage );
+   throwException( exceptionInfo );
+ }
+diff --git a/Magick++/lib/Magick++/Geometry.h b/Magick++/lib/Magick++/Geometry.h
+--- a/Magick++/lib/Magick++/Geometry.h
++++ b/Magick++/lib/Magick++/Geometry.h
+@@ -29,7 +29,7 @@
+   class MagickDLLDecl Geometry
+   {
+   public:
+-    
++
+     Geometry ( unsigned int width_,
+ 	       unsigned int height_,
+ 	       unsigned int xOff_ = 0,
+@@ -41,31 +41,31 @@
+     Geometry ( const Geometry &geometry_ );
+     Geometry ( );
+     ~Geometry ( void );
+-    
++
+     // Width
+     void          width ( unsigned int width_ );
+     unsigned int  width ( void ) const;
+-    
++
+     // Height
+     void          height ( unsigned int height_ );
+     unsigned int  height ( void ) const;
+-    
++
+     // X offset from origin
+     void          xOff ( unsigned int xOff_ );
+     unsigned int  xOff ( void ) const;
+-    
++
+     // Y offset from origin
+     void          yOff ( unsigned int yOff_ );
+     unsigned int  yOff ( void ) const;
+-    
++
+     // Sign of X offset negative? (X origin at right)
+     void          xNegative ( bool xNegative_ );
+     bool          xNegative ( void ) const;
+-    
++
+     // Sign of Y offset negative? (Y origin at bottom)
+     void          yNegative ( bool yNegative_ );
+     bool          yNegative ( void ) const;
+-    
++
+     // Width and height are expressed as percentages
+     void          percent ( bool percent_ );
+     bool          percent ( void ) const;
+@@ -73,29 +73,33 @@
+     // Resize without preserving aspect ratio (!)
+     void          aspect ( bool aspect_ );
+     bool          aspect ( void ) const;
+-    
++
+     // Resize if image is greater than size (>)
+     void          greater ( bool greater_ );
+     bool          greater ( void ) const;
+-    
++
+     // Resize if image is less than size (<)
+     void          less ( bool less_ );
+     bool          less ( void ) const;
+-    
++
++    // Resize image to fill a certain set of dimensions
++    void          fillArea ( bool fillArea_ );
++    bool          fillArea ( void ) const;
++
+     // Does object contain valid geometry?
+     void          isValid ( bool isValid_ );
+     bool          isValid ( void ) const;
+-    
++
+     // Set via geometry string
+     const Geometry& operator = ( const std::string &geometry_ );
+     const Geometry& operator = ( const char * geometry_ );
+ 
+     // Assignment operator
+     Geometry& operator= ( const Geometry& Geometry_ );
+-    
++
+     // Return geometry string
+     operator std::string() const;
+-    
++
+     //
+     // Public methods below this point are for Magick++ use only.
+     //
+@@ -105,7 +109,7 @@
+ 
+     // Return an ImageMagick RectangleInfo struct
+     operator MagickLib::RectangleInfo() const;
+-    
++
+   private:
+     unsigned int  _width;
+     unsigned int  _height;
+@@ -118,6 +122,7 @@
+     bool          _aspect;         // Force exact size (!)
+     bool          _greater;        // Re-size only if larger than geometry (>)
+     bool          _less;           // Re-size only if smaller than geometry (<)
++    bool          _fillArea;       // Re-size image to fill a set of dimensions (^)
+   };
+ } // namespace Magick
+ 
+@@ -237,5 +242,15 @@
+   return _less;
+ }
+ 
++// Resize image to fit a set of dimensions
++inline void Magick::Geometry::fillArea ( bool fillArea_ )
++{
++  _fillArea = fillArea_;
++}
++inline bool Magick::Geometry::fillArea ( void ) const
++{
++  return _fillArea;
++}
++
+ 
+ #endif // Magick_Geometry_header
+diff --git a/Magick++/lib/Magick++/Image.h b/Magick++/lib/Magick++/Image.h
+--- a/Magick++/lib/Magick++/Image.h
++++ b/Magick++/lib/Magick++/Image.h
+@@ -288,7 +288,13 @@
+ 
+     // Extent image size with combination of background color & gravity types
+     void            extent ( const Geometry &geometry_ );
+-    void            extent ( const Geometry &geometry_, const Color &backgroundColor_ );
++    void            extent ( const Geometry &geometry_,
++                             const GravityType &gravity_ );
++    void            extent ( const Geometry &geometry_,
++                             const Color &backgroundColor_ );
++    void            extent ( const Geometry &geometry_,
++                             const Color &backgroundColor_,
++                             const GravityType &gravity_ );
+ 
+     // Flip image (reflect each scanline in the vertical direction)
+     void            flip ( void );
+diff --git a/PerlMagick/Makefile.PL b/PerlMagick/Makefile.PL
+--- a/PerlMagick/Makefile.PL
++++ b/PerlMagick/Makefile.PL
+@@ -14,21 +14,21 @@
+ use ExtUtils::MakeMaker;
+ use Config;
+ 
+-my $magick_CPPFLAGS='-I/usr/local/Cellar/freetype/2.5.3_1/include/freetype2 -I/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.10.sdk/usr/include/libxml2';
++my $magick_CPPFLAGS='-I/usr/local/include -I/usr/local/Cellar/freetype/2.5.3_1/include/freetype2 -I/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.10.sdk/usr/include/libxml2';
+ my $magick_DEFS=' -D_LARGE_FILES=1 -DHAVE_CONFIG_H';
+ my $magick_CFLAGS='-g -O2 -Wall -D_THREAD_SAFE';
+-my $magick_CC='gcc';
+-my $magick_CPPFLAGS='-I../ -I.. -I/usr/local/Cellar/freetype/2.5.3_1/include/freetype2 -I/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.10.sdk/usr/include/libxml2';
+-my $magick_LDFLAGS='-L/usr/local/Cellar/freetype/2.5.3_1/lib -L/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.10.sdk/usr/lib';
++my $magick_CC='clang';
++my $magick_CPPFLAGS='-I../ -I.. -I/usr/local/include -I/usr/local/Cellar/freetype/2.5.3_1/include/freetype2 -I/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.10.sdk/usr/include/libxml2';
++my $magick_LDFLAGS='-L/usr/local/lib/ -L/usr/local/Cellar/freetype/2.5.3_1/lib -L/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.10.sdk/usr/lib';
+ my $magick_BIN_DIR="$ENV{'DESTDIR'}/usr/local/bin";
+-my $magick_DEP_LIBS='-lfreetype -lbz2 -lxml2 -lz -lm -lpthread';
+-my $magick_PERLMAINCC='';
++my $magick_DEP_LIBS='-lwebp -lfreetype -ljpeg -lpng16 -llzma -lbz2 -lxml2 -lz -lm -lpthread';
++my $magick_PERLMAINCC='clang';
+ my $magick_LIB_DIR="$ENV{'DESTDIR'}/usr/local/lib";
+ 
+ # Compute test specification
+ my $delegate_tests='t/*.t';
+ my $delegate;
+-foreach $delegate (qw/bzlib ttf xml zlib/) {
++foreach $delegate (qw/bzlib webp jng jpeg lzma png ttf xml zlib/) {
+   if( -d "t/$delegate" ) {
+     $delegate_tests .= " t/$delegate/*.t";
+   }

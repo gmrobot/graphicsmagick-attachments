@@ -1,0 +1,31 @@
+# HG changeset patch
+# User Hubert Figuière <hub@figuiere.net>
+# Date 1609996619 18000
+#      Thu Jan 07 00:16:59 2021 -0500
+# Node ID 92f1197584f1707e6440ad75ca189c48997542ca
+# Parent  3c6aeaa0a1943324b90faf3e22da16ca43e7ecb7
+Fix dimensions of the MediaBox in PDF export.
+
+diff --git a/coders/pdf.c b/coders/pdf.c
+--- a/coders/pdf.c
++++ b/coders/pdf.c
+@@ -1000,17 +1000,18 @@ static unsigned int WritePDFImage(const 
+       (void) WriteBlobString(image,buffer);
+       (void) WriteBlobString(image,"/Resources <<\n");
+       FormatString(buffer,"/XObject << /Im%lu %lu 0 R >>\n",image->scene,
+                    object+4);
+       (void) WriteBlobString(image,buffer);
+       FormatString(buffer,"/ProcSet %lu 0 R >>\n",object+3);
+       (void) WriteBlobString(image,buffer);
+       FormatString(buffer,"/MediaBox [0 0 %ld %ld]\n",
+-                   media_info.width,media_info.height);
++                   (long int)(((media_info.width * dx_resolution) / x_resolution) + 0.5),
++                   (long int)(((media_info.height * dy_resolution) / y_resolution) + 0.5));
+       (void) WriteBlobString(image,buffer);
+       FormatString(buffer,"/CropBox [%ld %ld %ld %ld]\n",geometry.x,geometry.y,
+                    geometry.x+geometry.width,geometry.y+geometry.height);
+       (void) WriteBlobString(image,buffer);
+       FormatString(buffer,"/Contents %lu 0 R\n",object+1);
+       (void) WriteBlobString(image,buffer);
+       (void) WriteBlobString(image,">>\n");
+       (void) WriteBlobString(image,"endobj\n");

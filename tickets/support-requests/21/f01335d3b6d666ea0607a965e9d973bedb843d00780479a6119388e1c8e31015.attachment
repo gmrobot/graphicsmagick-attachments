@@ -1,0 +1,110 @@
+<html xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns:m="http://schemas.microsoft.com/office/2004/12/omml" xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=us-ascii">
+<meta name="Generator" content="Microsoft Word 14 (filtered medium)">
+<!--[if !mso]><style>v\:* {behavior:url(#default#VML);}
+o\:* {behavior:url(#default#VML);}
+w\:* {behavior:url(#default#VML);}
+.shape {behavior:url(#default#VML);}
+</style><![endif]--><style><!--
+/* Font Definitions */
+@font-face
+	{font-family:Calibri;
+	panose-1:2 15 5 2 2 2 4 3 2 4;}
+@font-face
+	{font-family:Tahoma;
+	panose-1:2 11 6 4 3 5 4 4 2 4;}
+/* Style Definitions */
+p.MsoNormal, li.MsoNormal, div.MsoNormal
+	{margin:0in;
+	margin-bottom:.0001pt;
+	font-size:12.0pt;
+	font-family:"Times New Roman","serif";}
+a:link, span.MsoHyperlink
+	{mso-style-priority:99;
+	color:blue;
+	text-decoration:underline;}
+a:visited, span.MsoHyperlinkFollowed
+	{mso-style-priority:99;
+	color:purple;
+	text-decoration:underline;}
+p
+	{mso-style-priority:99;
+	mso-margin-top-alt:auto;
+	margin-right:0in;
+	mso-margin-bottom-alt:auto;
+	margin-left:0in;
+	font-size:12.0pt;
+	font-family:"Times New Roman","serif";}
+span.EmailStyle19
+	{mso-style-type:personal-reply;
+	font-family:"Calibri","sans-serif";
+	color:#1F497D;}
+.MsoChpDefault
+	{mso-style-type:export-only;
+	font-family:"Calibri","sans-serif";}
+@page WordSection1
+	{size:8.5in 11.0in;
+	margin:1.0in 1.0in 1.0in 1.0in;}
+div.WordSection1
+	{page:WordSection1;}
+--></style><!--[if gte mso 9]><xml>
+<o:shapedefaults v:ext="edit" spidmax="1026" />
+</xml><![endif]--><!--[if gte mso 9]><xml>
+<o:shapelayout v:ext="edit">
+<o:idmap v:ext="edit" data="1" />
+</o:shapelayout></xml><![endif]-->
+</head>
+<body lang="EN-US" link="blue" vlink="purple">
+<div class="WordSection1">
+<p class="MsoNormal"><span style="font-size:11.0pt;font-family:&quot;Calibri&quot;,&quot;sans-serif&quot;;color:#1F497D">Thanks. Somehow I missed the line about having to manually install the fonts. I stopped at one too few levels of indirection.<o:p></o:p></span></p>
+<p class="MsoNormal"><span style="font-size:11.0pt;font-family:&quot;Calibri&quot;,&quot;sans-serif&quot;;color:#1F497D"><o:p>&nbsp;</o:p></span></p>
+<p class="MsoNormal"><span style="font-size:11.0pt;font-family:&quot;Calibri&quot;,&quot;sans-serif&quot;;color:#1F497D">I&#8217;ll see if I can find my way into installing these.<o:p></o:p></span></p>
+<p class="MsoNormal"><span style="font-size:11.0pt;font-family:&quot;Calibri&quot;,&quot;sans-serif&quot;;color:#1F497D"><o:p>&nbsp;</o:p></span></p>
+<p class="MsoNormal"><span style="font-size:11.0pt;font-family:&quot;Calibri&quot;,&quot;sans-serif&quot;;color:#1F497D">Thanks for the quick response.<o:p></o:p></span></p>
+<p class="MsoNormal"><a name="_MailEndCompose"><span style="font-size:11.0pt;font-family:&quot;Calibri&quot;,&quot;sans-serif&quot;;color:#1F497D"><o:p>&nbsp;</o:p></span></a></p>
+<p class="MsoNormal"><b><span style="font-size:10.0pt;font-family:&quot;Tahoma&quot;,&quot;sans-serif&quot;">From:</span></b><span style="font-size:10.0pt;font-family:&quot;Tahoma&quot;,&quot;sans-serif&quot;"> Bob Friesenhahn [mailto:bfriesen@users.sf.net]
+<br>
+<b>Sent:</b> Wednesday, March 04, 2015 6:15 PM<br>
+<b>To:</b> [graphicsmagick:support-requests] <br>
+<b>Subject:</b> [graphicsmagick:support-requests] #21 Frequently-recurring problem with obscure missing font<o:p></o:p></span></p>
+<p class="MsoNormal"><o:p>&nbsp;</o:p></p>
+<div>
+<p>Please see the installation documentation for Windows. In particular see<o:p></o:p></p>
+<p><a href="http://www.graphicsmagick.org/INSTALL-windows.html#prerequisites">http://www.graphicsmagick.org/INSTALL-windows.html#prerequisites</a><o:p></o:p></p>
+<p>On my system, I had to install the fonts under<o:p></o:p></p>
+<p>&quot;c:\Program Files\gs\gs9.10\fonts&quot;<o:p></o:p></p>
+<p>Artifex (company which develops Ghostscript) does not seem to distribute these fonts any more but Ghostscript and GraphicsMagick will use them when they are installed. This gets you fonts very similar to the official Adobe Postscript versions. Otherwise
+ fonts from Windows would need to be substituted.<o:p></o:p></p>
+<p>Bob<o:p></o:p></p>
+<div class="MsoNormal" align="center" style="text-align:center">
+<hr size="3" width="100%" align="center">
+</div>
+<p><strong><a href="http://sourceforge.net/p/graphicsmagick/support-requests/21">[support-requests:#21]</a> Frequently-recurring problem with obscure missing font</strong><o:p></o:p></p>
+<p><strong>Status:</strong> open<br>
+<strong>Group:</strong> v1.0_(example)<br>
+<strong>Created:</strong> Wed Mar 04, 2015 10:30 PM UTC by DigitalDan<br>
+<strong>Last Updated:</strong> Wed Mar 04, 2015 10:30 PM UTC<br>
+<strong>Owner:</strong> nobody<o:p></o:p></p>
+<p>Perhaps a newbie issue.<br>
+Windows 7, 64 bit GraphicsMagick installation. 64 Ghostscript also installed.<br>
+Long-time ImageMagick user, no such problem.<br>
+Any attempt to -draw text &quot;....&quot; results in Msg:<br>
+Unable to read font (n0190031.pfb) [No such file or directory]<br>
+gm convert -list font produces a long list of the expected files.<o:p></o:p></p>
+<p>Googling for this produces tens of similar complaints over the last decade.<br>
+Responses to these complaints are sparse, and never (to date) helpful.<br>
+Adding font specs and such does not help.<br>
+Dead in the water until I can get past this. No text is entered on result image.<o:p></o:p></p>
+<p>Thanks for any help.<o:p></o:p></p>
+<div class="MsoNormal" align="center" style="text-align:center">
+<hr size="3" width="100%" align="center">
+</div>
+<p>Sent from sourceforge.net because you indicated interest in <a href="https://sourceforge.net/p/graphicsmagick/support-requests/21">
+https://sourceforge.net/p/graphicsmagick/support-requests/21/</a><o:p></o:p></p>
+<p>To unsubscribe from further messages, please visit <a href="https://sourceforge.net/auth/subscriptions">
+https://sourceforge.net/auth/subscriptions/</a><o:p></o:p></p>
+</div>
+</div>
+</body>
+</html>

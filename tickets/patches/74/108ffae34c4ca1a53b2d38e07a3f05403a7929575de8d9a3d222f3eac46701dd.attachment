@@ -1,0 +1,42 @@
+diff -r 6e8fc5123c11 TclMagick/configure.ac
+--- a/TclMagick/configure.ac	Tue May 02 12:40:56 2023 +0400
++++ b/TclMagick/configure.ac	Tue May 02 14:20:34 2023 +0400
+@@ -117,4 +117,5 @@
+ AC_OUTPUT([
+ Makefile
+ generic/Makefile
++generic/pkgIndex.tcl
+ ])
+diff -r 6e8fc5123c11 TclMagick/generic/Makefile.am
+--- a/TclMagick/generic/Makefile.am	Tue May 02 12:40:56 2023 +0400
++++ b/TclMagick/generic/Makefile.am	Tue May 02 14:20:34 2023 +0400
+@@ -23,3 +23,5 @@
+ TkMagick_la_LDFLAGS = @GM_LDFLAGS@ -L$(lib_magickdir) -no-undefined -module
+ TkMagick_la_LIBADD = @TCL_STUB_LIB_SPEC@ @TK_STUB_LIB_SPEC@ @TCL_LIBS@ @TK_LIBS@ @GM_LIBS@ libttkcommon.la
+ TkMagick_la_CPPFLAGS = @TCL_INCLUDES@ @GM_CPPFLAGS@ @TK_INCLUDES@ @TK_XINCLUDES@
++
++CLEANFILES = pkgIndex.tcl
+diff -r 6e8fc5123c11 TclMagick/generic/pkgIndex.tcl.in
+--- /dev/null	Thu Jan 01 00:00:00 1970 +0000
++++ b/TclMagick/generic/pkgIndex.tcl.in	Tue May 02 14:20:34 2023 +0400
+@@ -0,0 +1,7 @@
++package ifneeded @PACKAGE_NAME@ @PACKAGE_VERSION@ "
++[list load [file join $dir @PACKAGE_NAME@[info sharedlibextension]]]"
++
++package ifneeded TkMagick @PACKAGE_VERSION@ "
++package require Tk
++package require @PACKAGE_NAME@
++[list load [file join $dir TkMagick[info sharedlibextension]]]"
+diff -r 6e8fc5123c11 TclMagick/pkgIndex.tcl
+--- a/TclMagick/pkgIndex.tcl	Tue May 02 12:40:56 2023 +0400
++++ b/TclMagick/pkgIndex.tcl	Tue May 02 14:20:34 2023 +0400
+@@ -1,9 +1,6 @@
+ # Hand-written package index file.
+ 
+ package ifneeded TclMagick 0.46 "
+-if { ! [info exists ::env(MAGICK_CONFIGURE_PATH)] } {
+-[list set ::env(MAGICK_CONFIGURE_PATH) [file join $dir config]]
+-}
+ [list load [file join $dir TclMagick[info sharedlibextension]]]"
+ 
+ package ifneeded TkMagick 0.46 "

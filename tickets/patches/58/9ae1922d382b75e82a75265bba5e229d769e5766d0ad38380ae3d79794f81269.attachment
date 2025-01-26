@@ -1,0 +1,46 @@
+# HG changeset patch
+# User Przemysław Sobala <przemyslaw.sobala@gmail.com>
+# Date 1548064589 -3600
+#      Mon Jan 21 10:56:29 2019 +0100
+# Node ID dfa709b398189e48d45cf9e7f4b380eb0c0faf93
+# Parent  733b7e6c258947896146a2f6a56c658aec2e50e1
+WriteWEBPImage(): Introduce webp use-yuv-sharp option and mark webp encoder's input image as RGB
+
+diff -r 733b7e6c2589 -r dfa709b39818 coders/webp.c
+--- a/coders/webp.c	Sat Jan 05 19:23:14 2019 -0600
++++ b/coders/webp.c	Mon Jan 21 10:56:29 2019 +0100
+@@ -104,6 +104,7 @@
+ #include <webp/mux.h>
+ #endif
+ #if WEBP_ENCODER_ABI_VERSION >= 0x020e /* >= 0.6.0 */
++#  define SUPPORT_CONFIG_USE_SHARP_YUV
+ #endif
+ 
+ /*
+@@ -593,6 +594,7 @@
+   */
+   (void) TransformColorspace(image,RGBColorspace);
+   image->storage_class=DirectClass;
++  picture.use_argb = 1;
+ 
+   (void) MagickTsdSetSpecific(tsd_key,(void *) image);
+ 
+@@ -676,6 +678,10 @@
+   if ((value=AccessDefinition(image_info,"webp","low-memory")))
+     configure.low_memory=(LocaleCompare(value,"TRUE") == 0 ? 1 : 0);
+ #endif
++#if defined(SUPPORT_CONFIG_USE_SHARP_YUV)
++  if ((value=AccessDefinition(image_info,"webp","use-sharp-yuv")))
++    configure.use_sharp_yuv=(LocaleCompare(value,"TRUE") == 0 ? 1 : 0);
++#endif
+   if (WebPValidateConfig(&configure) != 1)
+     ThrowWriterException(CoderError,WebPInvalidConfiguration,image);
+ 
+@@ -684,7 +690,6 @@
+       /*
+         Use ARGB input for lossless (YUVA input is lossy).
+       */
+-      picture.use_argb = 1;
+       webp_status = WebPPictureAlloc(&picture);
+ 
+       for (y = 0; y < image->rows; y++)

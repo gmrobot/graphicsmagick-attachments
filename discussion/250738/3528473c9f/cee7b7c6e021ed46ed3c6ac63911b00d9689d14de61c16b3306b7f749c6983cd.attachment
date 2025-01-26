@@ -1,0 +1,14 @@
+<div dir="ltr"><p class="MsoNormal" style="margin:0cm 0cm 0.0001pt;font-size:12pt;font-family:&quot;Times New Roman&quot;"><span style="font-size:10pt;font-family:Arial">Hello,</span></p><p class="MsoNormal" style="margin:0cm 0cm 0.0001pt;font-size:12pt;font-family:&quot;Times New Roman&quot;"><span style="font-size:10pt;font-family:Arial"><br></span></p><p class="MsoNormal" style="margin:0cm 0cm 0.0001pt;font-size:12pt;font-family:&quot;Times New Roman&quot;"><span style="font-family:Arial;font-size:10pt">the
+following command works without error message and produces an outputfile of reasonable size</span></p><p class="MsoNormal" style="margin:0cm 0cm 0.0001pt;font-size:12pt;font-family:&quot;Times New Roman&quot;"><span style="font-family:Arial;font-size:10pt"><br></span></p><p class="MsoNormal" style="margin:0cm 0cm 0.0001pt;font-size:12pt;font-family:&quot;Times New Roman&quot;"><span style="font-family:Arial;font-size:10pt"><b>GM CONVERT
+-compress none &quot;C:\temp\input.png&quot; &quot;C:\temp\output.pcl&quot;</b></span><br></p>
+
+<p class="MsoNormal" style="margin:0cm 0cm 0.0001pt;font-size:12pt;font-family:&quot;Times New Roman&quot;"><span style="font-size:10pt;font-family:Arial"> </span></p>
+
+<p class="MsoNormal" style="margin:0cm 0cm 0.0001pt;font-size:12pt;font-family:&quot;Times New Roman&quot;"><span style="font-size:10pt;font-family:Arial">however the
+output file is chopped off badly when printed on a largeformat printer (HP Designjet), it seems like an internal page size is used and
+the size of the original PNG is not honored.</span></p>
+
+<p class="MsoNormal" style="margin:0cm 0cm 0.0001pt;font-size:12pt;font-family:&quot;Times New Roman&quot;"><span style="font-size:10pt;font-family:Arial"> </span></p>
+
+<p class="MsoNormal" style="margin:0cm 0cm 0.0001pt;font-size:12pt;font-family:&quot;Times New Roman&quot;"><span style="font-size:10pt;font-family:Arial">the input image
+is shown in this screenshot </span></p><div><img src="cid:ii_jnabb62w0" alt="image.png" width="388" height="542"><br></div><div><br></div><div>the printed hardcopy output becomes</div><div><br></div><div><div><div><img src="cid:ii_jnabfiea2" alt="image.png" width="362" height="542"><br></div></div></div><div><br></div><div>which is essential the top left corner cropped out, and enlarged to the actual size of the png</div><div><br></div><div>how can I convert PNG to PCL by preserving original size and scale, and without loosing any content ?</div><div><br></div><div>thank you kindly</div><div>Hakan</div><div><br></div><div><br></div></div>

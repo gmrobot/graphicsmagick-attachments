@@ -1,0 +1,93 @@
+# HG changeset patch
+# User Dirk Lemstra <dirk@imagemagick.org>
+# Date 1405887916 -7200
+#      Sun Jul 20 22:25:16 2014 +0200
+# Node ID 7184ff6d33dc3e46d9b5a9f6f75ced165fca4b97
+# Parent  f8f1d47c7798de7ac7b05b326cf384c08665ccf4
+Fix for generating project with duplicate file names.
+
+diff --git a/VisualMagick/configure/configure.cpp b/VisualMagick/configure/configure.cpp
+--- a/VisualMagick/configure/configure.cpp
++++ b/VisualMagick/configure/configure.cpp
+@@ -5219,17 +5219,41 @@ void ConfigureVS7Project::write_begin_gr
+ 
+ void ConfigureVS7Project::write_end_group()
+ {
+   m_stream << "    </Filter>" << endl;
+ }
+ 
+ void ConfigureVS7Project::write_file(const char *filename)
+ {
+-  m_stream << "      <File RelativePath=\"" << filename << "\"/>" << endl;
++  int count = 1;
++  if (name.substr(name.find_last_of(".")) == ".c")
++   {
++     if (m_fileNames.find(name) == m_fileNames.end())
++       m_fileNames.insert(make_pair(name, count));
++     else
++       count = ++m_fileNames[name];
++   }
++
++  if (count == 1)
++    {
++      m_stream << "      <File RelativePath=\"" << filename << "\"/>" << endl;
++    }
++  else
++    {
++      name = name.substr(0, name.find_last_of(".") + 1);
++      m_stream << "      <File RelativePath=\"" << filename << "\">" << endl;
++      m_stream << "        <FileConfiguration Name=\"Debug|" << (build64Bit ? "x64" : "Win32") << "\">" << endl;
++      m_stream << "          <Tool Name=\"VCCLCompilerTool\" ObjectFile=\"$(IntDir)" << name << count << ".obj\"/>" << endl;
++      m_stream << "        </FileConfiguration>" << endl;
++      m_stream << "        <FileConfiguration Name=\"Release|" << (build64Bit ? "x64" : "Win32") << "\">" << endl;
++      m_stream << "          <Tool Name=\"VCCLCompilerTool\" ObjectFile=\"$(IntDir)" << name << count << ".obj\"/>" << endl;
++      m_stream << "        </FileConfiguration>" << endl;
++      m_stream << "      </File>" << endl;
++    }
+ }
+ 
+ BOOL BrowseForFolder(HWND hOwner, char* szTitle, char* szRetval)
+ {
+   BROWSEINFO info;
+   LPITEMIDLIST itemidlist;
+   char szDirectory[_MAX_PATH];
+   LPMALLOC pMalloc;
+diff --git a/VisualMagick/configure/configure.h b/VisualMagick/configure/configure.h
+--- a/VisualMagick/configure/configure.h
++++ b/VisualMagick/configure/configure.h
+@@ -18,16 +18,17 @@
+ #ifndef _USE_OLD_IOSTREAMS
+ #include <fstream>
+ #else
+ #include <fstream.h> // WTR
+ #endif
+ 
+ #include <string>
+ #include <list>
++#include <map>
+ 
+ using namespace std;
+ 
+ /////////////////////////////////////////////////////////////////////////////
+ // CConfigureApp:
+ // See Configure.cpp for the implementation of this class
+ /////////////////////////////////////////////////////////////////////////////
+ 
+@@ -245,16 +246,17 @@ public:
+   void write_project_dependency(ConfigureProject *project, const char *dep_name);
+ };
+ 
+ class ConfigureVS7Project : public ConfigureProject
+ {
+ public:
+   ConfigureVS7Project() {};
+   ~ConfigureVS7Project( void );
++  map<string, int> m_fileNames;
+ 
+   void write_begin_group(const char *name);
+   void write_end_group(void);
+   void write_begin_target(const char* name);
+   void write_end_target(void);
+   void write_begin_project(const char *name,int type);
+   void write_end_project(void);
+   void write_file(const char *filename);

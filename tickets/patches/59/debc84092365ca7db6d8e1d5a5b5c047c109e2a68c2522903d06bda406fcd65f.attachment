@@ -1,0 +1,477 @@
+# HG changeset patch
+# User Samuel Thibault <samuel.thibault@ens-lyon.org>
+# Date 1556388694 -7200
+#      Sat Apr 27 20:11:34 2019 +0200
+# Node ID c25be138936fd190794afeab1ff15407a85d8e7a
+# Parent  2f810b111f716b851138af00038034fcc90cb591
+Add braille image format support
+
+diff --git a/coders/Makefile.am b/coders/Makefile.am
+--- a/coders/Makefile.am
++++ b/coders/Makefile.am
+@@ -75,6 +75,7 @@ MAGICK_CODER_SRCS = \
+ 	coders/art.c \
+ 	coders/avs.c \
+ 	coders/bmp.c \
++	coders/braille.c \
+ 	coders/cals.c \
+ 	coders/caption.c \
+ 	coders/cineon.c \
+@@ -173,6 +174,7 @@ coders_LTLIBRARIES = \
+ 	coders/art.la \
+ 	coders/avs.la \
+ 	coders/bmp.la \
++	coders/braille.la \
+ 	coders/cals.la \
+ 	coders/caption.la \
+ 	coders/cineon.la \
+@@ -282,6 +284,12 @@ coders_bmp_la_CPPFLAGS     = $(MAGICK_CO
+ coders_bmp_la_LDFLAGS      = $(MODULECOMMONFLAGS)
+ coders_bmp_la_LIBADD       = $(LIBMAGICK)
+ 
++# Braille coder module
++coders_braille_la_SOURCES  = coders/braille.c
++coders_braille_la_CPPFLAGS = $(MAGICK_CODER_CPPFLAGS)
++coders_braille_la_LDFLAGS  = $(MODULECOMMONFLAGS)
++coders_braille_la_LIBADD   = $(LIBMAGICK)
++
+ # CALS coder module
+ coders_cals_la_SOURCES     = coders/cals.c
+ coders_cals_la_CPPFLAGS    = $(MAGICK_CODER_CPPFLAGS)
+diff --git a/coders/braille.c b/coders/braille.c
+new file mode 100644
+--- /dev/null
++++ b/coders/braille.c
+@@ -0,0 +1,316 @@
++/*
++% Copyright (C) 2019 GraphicsMagick Group
++%
++% This program is covered by multiple licenses, which are described in
++% Copyright.txt. You should have received a copy of Copyright.txt with this
++% package; otherwise see http://www.graphicsmagick.org/www/Copyright.html.
++%
++%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
++%                                                                             %
++%                                                                             %
++%               BBBB   RRRR    AAA   IIIII  L      L      EEEEE               %
++%               B   B  R   R  A   A    I    L      L      E                   %
++%               BBBB   RRRR   AAAAA    I    L      L      EEE                 %
++%               B   B  R R    A   A    I    L      L      E                   %
++%               BBBB   R  R   A   A  IIIII  LLLLL  LLLLL  EEEEE               %
++%                                                                             %
++%                                                                             %
++%                          Read/Write Braille Format                          %
++%                                                                             %
++%                               Samuel Thibault                               %
++%                                February 2008                                %
++%                                                                             %
++%                                                                             %
++%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
++%
++%
++*/
++
++/*
++  Include declarations.
++*/
++#include "magick/studio.h"
++#include "magick/blob.h"
++#include "magick/magick.h"
++#include "magick/pixel_cache.h"
++#include "magick/utility.h"
++
++/*
++  Forward declarations.
++*/
++static unsigned int
++  WriteBRAILLEImage(const ImageInfo *,Image *);
++
++/*
++%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
++%                                                                             %
++%                                                                             %
++%                                                                             %
++%   R e g i s t e r B R A I L L E I m a g e                                   %
++%                                                                             %
++%                                                                             %
++%                                                                             %
++%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
++%
++%  RegisterBRAILLEImage() adds values for the Braille format to
++%  the list of supported formats.  The values include the image format
++%  tag, a method to read and/or write the format, whether the format
++%  supports the saving of more than one frame to the same file or blob,
++%  whether the format supports native in-memory I/O, and a brief
++%  description of the format.
++%
++%  The format of the RegisterBRAILLEImage method is:
++%
++%      size_t RegisterBRAILLEImage(void)
++%
++*/
++ModuleExport void RegisterBRAILLEImage(void)
++{
++  MagickInfo
++    *entry;
++
++  entry=SetMagickInfo("BRF");
++  entry->encoder=(EncoderHandler) WriteBRAILLEImage;
++  entry->adjoin=False;
++  entry->description="BRF ASCII Braille format";
++  entry->module="BRAILLE";
++  (void) RegisterMagickInfo(entry);
++  entry=SetMagickInfo("UBRL");
++  entry->encoder=(EncoderHandler) WriteBRAILLEImage;
++  entry->adjoin=False;
++  entry->description="Unicode Text format";
++  entry->module="BRAILLE";
++  (void) RegisterMagickInfo(entry);
++  entry=SetMagickInfo("UBRL6");
++  entry->encoder=(EncoderHandler) WriteBRAILLEImage;
++  entry->adjoin=False;
++  entry->description="Unicode Text format 6dot";
++  entry->module="BRAILLE";
++  (void) RegisterMagickInfo(entry);
++  entry=SetMagickInfo("ISOBRL");
++  entry->encoder=(EncoderHandler) WriteBRAILLEImage;
++  entry->adjoin=False;
++  entry->description="ISO/TR 11548-1 format";
++  entry->module="BRAILLE";
++  (void) RegisterMagickInfo(entry);
++  entry=SetMagickInfo("ISOBRL6");
++  entry->encoder=(EncoderHandler) WriteBRAILLEImage;
++  entry->adjoin=False;
++  entry->description="ISO/TR 11548-1 format 6dot";
++  entry->module="BRAILLE";
++  (void) RegisterMagickInfo(entry);
++}
++
++/*
++%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
++%                                                                             %
++%                                                                             %
++%                                                                             %
++%   U n r e g i s t e r B R A I L L E I m a g e                               %
++%                                                                             %
++%                                                                             %
++%                                                                             %
++%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
++%
++%  UnregisterBRAILLEImage() removes format registrations made by the
++%  BRAILLE module from the list of supported formats.
++%
++%  The format of the UnregisterBRAILLEImage method is:
++%
++%      UnregisterBRAILLEImage(void)
++%
++*/
++ModuleExport void UnregisterBRAILLEImage(void)
++{
++  (void) UnregisterMagickInfo("BRF");
++  (void) UnregisterMagickInfo("UBRL");
++  (void) UnregisterMagickInfo("UBRL6");
++  (void) UnregisterMagickInfo("ISOBRL");
++  (void) UnregisterMagickInfo("ISOBRL6");
++}
++
++/*
++%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
++%                                                                             %
++%                                                                             %
++%                                                                             %
++%   W r i t e B R A I L L E I m a g e                                         %
++%                                                                             %
++%                                                                             %
++%                                                                             %
++%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
++%
++%  WriteBRAILLEImage() writes an image to a file in the Braille format.
++%
++%  The format of the WriteBRAILLEImage method is:
++%
++%      unsigned int WriteBRAILLEImage(const ImageInfo *image_info,
++%        Image *image)
++%
++%  A description of each parameter follows.
++%
++%    o image_info: The image info.
++%
++%    o image:  The image.
++%
++*/
++static unsigned int WriteBRAILLEImage(const ImageInfo *image_info,
++  Image *image)
++{
++  char
++    buffer[MaxTextExtent];
++
++  IndexPacket
++    polarity;
++
++  int
++    unicode = 0,
++    iso_11548_1 = 0;
++
++  unsigned int
++    status;
++
++  register const IndexPacket
++    *indexes;
++
++  register const PixelPacket
++    *p;
++
++  register ssize_t
++    x;
++
++  size_t
++    cell_height = 4;
++
++  ssize_t
++    y;
++
++  /*
++    Open output image file.
++  */
++  assert(image_info != (const ImageInfo *) NULL);
++  assert(image != (Image *) NULL);
++  if (LocaleCompare(image_info->magick,"UBRL") == 0)
++    unicode=1;
++  else if (LocaleCompare(image_info->magick,"UBRL6") == 0)
++    {
++      unicode=1;
++      cell_height=3;
++    }
++  else if (LocaleCompare(image_info->magick,"ISOBRL") == 0)
++    iso_11548_1=1;
++  else if (LocaleCompare(image_info->magick,"ISOBRL6") == 0)
++    {
++      iso_11548_1=1;
++      cell_height=3;
++    }
++  else
++    cell_height=3;
++  status=OpenBlob(image_info,image,WriteBinaryBlobMode,&image->exception);
++  if (status == False)
++    return(status);
++  if (!iso_11548_1)
++    {
++      if (image->page.x != 0)
++        {
++          (void) FormatString(buffer,"X: %.20g\n",(double)
++            image->page.x);
++          (void) WriteBlobString(image,buffer);
++        }
++      if (image->page.y != 0)
++        {
++          (void) FormatString(buffer,"Y: %.20g\n",(double)
++            image->page.y);
++          (void) WriteBlobString(image,buffer);
++        }
++      (void) FormatString(buffer,"Width: %.20g\n",(double)
++        (image->columns+(image->columns % 2)));
++      (void) WriteBlobString(image,buffer);
++      (void) FormatString(buffer,"Height: %.20g\n",(double)
++        image->rows);
++      (void) WriteBlobString(image,buffer);
++      (void) WriteBlobString(image,"\n");
++    }
++  (void) SetImageType(image,BilevelType);
++  polarity=PixelIntensityToQuantum(&image->colormap[0]) >= (MaxRGB/2);
++  if (image->colors == 2)
++    polarity=PixelIntensityToQuantum(&image->colormap[0]) >=
++      PixelIntensityToQuantum(&image->colormap[1]);
++  for (y=0; y < (ssize_t) image->rows; y+=(ssize_t) cell_height)
++  {
++    if ((y+cell_height) > image->rows)
++      cell_height = (size_t) (image->rows-y);
++    p=AcquireImagePixels(image,0,y,image->columns,cell_height,&image->exception);
++    if (p == (const PixelPacket *) NULL)
++      break;
++    indexes=AccessImmutableIndexes(image);
++    for (x=0; x < (ssize_t) image->columns; x+=2)
++    {
++      unsigned char cell = 0;
++      int two_columns = x+1 < (ssize_t) image->columns;
++
++      do
++      {
++#define do_cell(dx,dy,bit) do { \
++        cell |= (indexes[x+dx+dy*image->columns] == polarity) << bit; \
++} while (0)
++
++        do_cell(0,0,0);
++        if (two_columns)
++          do_cell(1,0,3);
++        if (cell_height < 2)
++          break;
++
++        do_cell(0,1,1);
++        if (two_columns)
++          do_cell(1,1,4);
++        if (cell_height < 3)
++          break;
++
++        do_cell(0,2,2);
++        if (two_columns)
++          do_cell(1,2,5);
++        if (cell_height < 4)
++          break;
++
++        do_cell(0,3,6);
++        if (two_columns)
++          do_cell(1,3,7);
++      } while(0);
++
++      if (unicode)
++        {
++          unsigned char utf8[3];
++          /* Unicode text */
++          utf8[0] = (unsigned char) (0xe0|((0x28>>4)&0x0f));
++          utf8[1] = 0x80|((0x28<<2)&0x3f)|(cell>>6);
++          utf8[2] = 0x80|(cell&0x3f);
++          (void) WriteBlob(image,3,utf8);
++        }
++      else if (iso_11548_1)
++        {
++          /* ISO/TR 11548-1 binary */
++          (void) WriteBlobByte(image,cell);
++        }
++      else
++        {
++          /* BRF */
++          static const unsigned char iso_to_brf[64] = {
++            ' ', 'A', '1', 'B', '\'', 'K', '2', 'L',
++            '@', 'C', 'I', 'F', '/', 'M', 'S', 'P',
++            '"', 'E', '3', 'H', '9', 'O', '6', 'R',
++            '^', 'D', 'J', 'G', '>', 'N', 'T', 'Q',
++            ',', '*', '5', '<', '-', 'U', '8', 'V',
++            '.', '%', '[', '$', '+', 'X', '!', '&',
++            ';', ':', '4', '\\', '0', 'Z', '7', '(',
++            '_', '?', 'W', ']', '#', 'Y', ')', '='
++          };
++          (void) WriteBlobByte(image,iso_to_brf[cell]);
++        }
++    }
++    if (iso_11548_1 == 0)
++      (void) WriteBlobByte(image,'\n');
++  }
++  (void) CloseBlob(image);
++  return(MagickTrue);
++}
+diff --git a/magick/module_aliases.h b/magick/module_aliases.h
+--- a/magick/module_aliases.h
++++ b/magick/module_aliases.h
+@@ -40,6 +40,7 @@ static const struct
+     MODULEALIAS("BIGTIFF","TIFF"),
+     MODULEALIAS("BMP2","BMP"),
+     MODULEALIAS("BMP3","BMP"),
++    MODULEALIAS("BRF","BRAILLE"),
+     MODULEALIAS("C","GRAY"),
+     MODULEALIAS("CAL","CALS"),
+     MODULEALIAS("CIN","CINEON"),
+@@ -82,6 +83,8 @@ static const struct
+     MODULEALIAS("IPTC","META"),
+     MODULEALIAS("IPTCTEXT","META"),
+     MODULEALIAS("IPTCWTEXT","META"),
++    MODULEALIAS("ISOBRL","BRAILLE"),
++    MODULEALIAS("ISOBRL6","BRAILLE"),
+     MODULEALIAS("J2C","JP2"),
+     MODULEALIAS("JBG","JBIG"),
+     MODULEALIAS("JNG","PNG"),
+@@ -133,6 +136,8 @@ static const struct
+     MODULEALIAS("SVGZ","SVG"),
+     MODULEALIAS("TEXT","TXT"),
+     MODULEALIAS("TIF","TIFF"),
++    MODULEALIAS("UBRL","BRAILLE"),
++    MODULEALIAS("UBRL6","BRAILLE"),
+     MODULEALIAS("VDA","TGA"),
+     MODULEALIAS("VST","TGA"),
+     MODULEALIAS("X3F","DCRAW"),
+diff --git a/magick/static.c b/magick/static.c
+--- a/magick/static.c
++++ b/magick/static.c
+@@ -62,6 +62,7 @@ static const struct
+   STATICM("ART",RegisterARTImage,UnregisterARTImage),
+   STATICM("AVS",RegisterAVSImage,UnregisterAVSImage),
+   STATICM("BMP",RegisterBMPImage,UnregisterBMPImage),
++  STATICM("BRAILLE",RegisterBRAILLEImage,UnregisterBRAILLEImage),
+   STATICM("CALS",RegisterCALSImage,UnregisterCALSImage),
+   STATICM("CAPTION",RegisterCAPTIONImage,UnregisterCAPTIONImage),
+   STATICM("CINEON",RegisterCINEONImage,UnregisterCINEONImage),
+diff --git a/magick/static.h b/magick/static.h
+--- a/magick/static.h
++++ b/magick/static.h
+@@ -22,6 +22,8 @@ extern ModuleExport void
+   RegisterAVSImage(void),
+   RegisterBIEImage(void),
+   RegisterBMPImage(void),
++  RegisterBRAILLEImage(void),
++  RegisterBRFImage(void),
+   RegisterCALSImage(void),
+   RegisterCAPTIONImage(void),
+   RegisterCINEONImage(void),
+@@ -60,6 +62,8 @@ extern ModuleExport void
+   RegisterICONImage(void),
+   RegisterIDENTITYImage(void),
+   RegisterINFOImage(void),
++  RegisterISOBRLImage(void),
++  RegisterISOBRL6Image(void),
+   RegisterJBGImage(void),
+   RegisterJBIGImage(void),
+   RegisterJNXImage(void),
+@@ -133,6 +137,8 @@ extern ModuleExport void
+   RegisterTOPOLImage(void),
+   RegisterTTFImage(void),
+   RegisterTXTImage(void),
++  RegisterUBRLImage(void),
++  RegisterUBRL6Image(void),
+   RegisterUILImage(void),
+   RegisterURLImage(void),
+   RegisterUYVYImage(void),
+@@ -161,6 +167,8 @@ extern ModuleExport void
+   UnregisterAVSImage(void),
+   UnregisterBIEImage(void),
+   UnregisterBMPImage(void),
++  UnregisterBRAILLEImage(void),
++  UnregisterBRFImage(void),
+   UnregisterCALSImage(void),
+   UnregisterCAPTIONImage(void),
+   UnregisterCINEONImage(void),
+@@ -199,6 +207,8 @@ extern ModuleExport void
+   UnregisterICONImage(void),
+   UnregisterIDENTITYImage(void),
+   UnregisterINFOImage(void),
++  UnregisterISOBRLImage(void),
++  UnregisterISOBRL6Image(void),
+   UnregisterJBGImage(void),
+   UnregisterJBIGImage(void),
+   UnregisterJNXImage(void),
+@@ -272,6 +282,8 @@ extern ModuleExport void
+   UnregisterTOPOLImage(void),
+   UnregisterTTFImage(void),
+   UnregisterTXTImage(void),
++  UnregisterUBRLImage(void),
++  UnregisterUBRL6Image(void),
+   UnregisterUILImage(void),
+   UnregisterURLImage(void),
+   UnregisterUYVYImage(void),
+diff --git a/magick/symbols.h b/magick/symbols.h
+--- a/magick/symbols.h
++++ b/magick/symbols.h
+@@ -805,6 +805,7 @@
+ #define RegisterARTImage GmRegisterARTImage
+ #define RegisterAVSImage GmRegisterAVSImage
+ #define RegisterBMPImage GmRegisterBMPImage
++#define RegisterBRAILLEImage GmRegisterBRAILLEImage
+ #define RegisterCALSImage GmRegisterCALSImage
+ #define RegisterCAPTIONImage GmRegisterCAPTIONImage
+ #define RegisterCINEONImage GmRegisterCINEONImage
+@@ -1019,6 +1020,7 @@
+ #define UnregisterARTImage GmUnregisterARTImage
+ #define UnregisterAVSImage GmUnregisterAVSImage
+ #define UnregisterBMPImage GmUnregisterBMPImage
++#define UnregisterBRAILLEImage GmUnregisterBRAILLEImage
+ #define UnregisterCALSImage GmUnregisterCALSImage
+ #define UnregisterCAPTIONImage GmUnregisterCAPTIONImage
+ #define UnregisterCINEONImage GmUnregisterCINEONImage

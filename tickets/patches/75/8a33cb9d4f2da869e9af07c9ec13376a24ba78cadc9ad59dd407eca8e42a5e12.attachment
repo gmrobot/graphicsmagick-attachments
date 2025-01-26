@@ -1,0 +1,116 @@
+# HG changeset patch
+# User Przemysław Sobala <przemyslaw.sobala@gmail.com>
+# Date 1686748234 -7200
+#      Wed Jun 14 15:10:34 2023 +0200
+# Node ID 94284fb0522c69d922af8fd80759ef47289e2458
+# Parent  0f8048d3e7a3b35a6d57c957c496ca9f898fa7ae
+ReadOnePNGImage(): set image orientation according to read EXIF data (if present)
+
+diff -r 0f8048d3e7a3 -r 94284fb0522c coders/png.c
+--- a/coders/png.c	Sun Jun 11 08:51:19 2023 -0500
++++ b/coders/png.c	Wed Jun 14 15:10:34 2023 +0200
+@@ -1373,9 +1373,9 @@
+ 
+       if (image->logging)
+         (void) LogMagickEvent(CoderEvent,GetMagickModule(),
+-                              " recognized eXIf chunk");
+-
+-      profile=MagickAllocateMemory(unsigned char *,chunk->size+6);
++                              "    recognized eXIf chunk");
++
++      profile=MagickAllocateMemory(unsigned char *,chunk->size+app1_hdr_size);
+ 
+       if (profile == (unsigned char *) NULL)
+         {
+@@ -1447,7 +1447,7 @@
+        return(-1); /* Error return */
+ 
+      (void) LogMagickEvent(CoderEvent,GetMagickModule(),
+-             " recognized caNv chunk");
++             "    recognized caNv chunk");
+ 
+      image=(Image *) png_get_user_chunk_ptr(ping);
+ 
+@@ -1460,7 +1460,7 @@
+     }
+ 
+   (void) LogMagickEvent(CoderEvent,GetMagickModule(),
+-         " unrecognized user chunk");
++         "    unrecognized user chunk: %s", chunk->name);
+ 
+   return(0); /* Did not recognize */
+ }
+@@ -2995,6 +2995,26 @@
+   UnlockSemaphoreInfo(png_semaphore);
+ #endif
+ 
++  /*
++    Retrieve image orientation from EXIF (if present) and store in
++    image.
++  */
++  const ImageAttribute
++    *attribute;
++
++  attribute = GetImageAttribute(image,"EXIF:Orientation");
++  if ((attribute != (const ImageAttribute *) NULL) &&
++      (attribute->value != (char *) NULL))
++  {
++    int
++      orientation;
++
++    orientation = MagickAtoI(attribute->value);
++    if ((orientation > UndefinedOrientation) &&
++        (orientation <= LeftBottomOrientation))
++      image->orientation=(OrientationType) orientation;
++  }
++
+   if (logging)
+     (void) LogMagickEvent(CoderEvent,GetMagickModule(),
+                           "  exit ReadOnePNGImage()");
+# HG changeset patch
+# User Przemysław Sobala <przemyslaw.sobala@gmail.com>
+# Date 1686749498 -7200
+#      Wed Jun 14 15:31:38 2023 +0200
+# Node ID 2977e641cc7dc599bf4fd894a6a14a3f674de76d
+# Parent  94284fb0522c69d922af8fd80759ef47289e2458
+ReadWEBPImage(): set image orientation according to read EXIF data (if present)
+
+diff -r 94284fb0522c -r 2977e641cc7d coders/webp.c
+--- a/coders/webp.c	Wed Jun 14 15:10:34 2023 +0200
++++ b/coders/webp.c	Wed Jun 14 15:31:38 2023 +0200
+@@ -37,6 +37,7 @@
+   Include declarations.
+ */
+ #include "magick/studio.h"
++#include "magick/attribute.h"
+ #include "magick/blob.h"
+ #include "magick/colormap.h"
+ #include "magick/log.h"
+@@ -361,6 +362,27 @@
+   pixels=(unsigned char *) NULL;
+   MagickFreeResourceLimitedMemory(stream);
+   CloseBlob(image);
++
++  /*
++    Retrieve image orientation from EXIF (if present) and store in
++    image.
++  */
++  const ImageAttribute
++    *attribute;
++
++  attribute = GetImageAttribute(image,"EXIF:Orientation");
++  if ((attribute != (const ImageAttribute *) NULL) &&
++      (attribute->value != (char *) NULL))
++  {
++    int
++      orientation;
++
++    orientation=MagickAtoI(attribute->value);
++    if ((orientation > UndefinedOrientation) &&
++        (orientation <= LeftBottomOrientation))
++      image->orientation=(OrientationType) orientation;
++  }
++
+   StopTimer(&image->timer);
+   return(image);
+ }

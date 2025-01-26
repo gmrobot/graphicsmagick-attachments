@@ -1,0 +1,179 @@
+/*
+ *
+ * Test ResizeImage()
+ *
+ * Written by Bob Friesenhahn <bfriesen@simple.dallas.tx.us>
+ *
+ */
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <sys/types.h>
+#include <magick/api.h>
+
+int main ( int argc, char **argv )
+{
+  Image
+    *final = (Image *) NULL,
+    *resized_image = (Image *) NULL,
+    *original = (Image *) NULL;
+
+  RectangleInfo
+    geometry;
+
+  char
+    geometry_str[MaxTextExtent],
+    infile[MaxTextExtent],
+    outfile[MaxTextExtent];
+
+  int
+    arg = 1,
+    exit_status = 0,
+    pause = 0;
+
+  ImageInfo
+    *imageInfo;
+
+  ExceptionInfo
+    exception;
+
+  if (LocaleNCompare("resize",argv[0],6) == 0)
+    InitializeMagick((char *) NULL);
+  else
+    InitializeMagick(*argv);
+
+  imageInfo=CloneImageInfo(0);
+  GetExceptionInfo( &exception );
+  geometry_str[0]='\0';
+  (void) memset(&geometry,0,sizeof(geometry));
+
+  for (arg=1; arg < argc; arg++)
+    {
+      char
+        *option = argv[arg];
+    
+      if (*option == '-')
+        {
+          if (LocaleCompare("debug",option+1) == 0)
+            (void) SetLogEventMask(argv[++arg]);
+          if (LocaleCompare("geometry",option+1) == 0)
+            {
+              arg++;
+              if ((arg == argc) || !IsGeometry(argv[arg]))
+                {
+                  (void) printf("-geometry argument missing or not geometry\n");
+                  (void) fflush(stdout);
+                  exit_status = 1;
+                  goto program_exit;
+                }
+              (void) strncpy(geometry_str,argv[arg],sizeof(geometry_str));
+              geometry_str[sizeof(geometry_str)-1]='\0';
+            }
+          else if (LocaleCompare("log",option+1) == 0)
+            (void) SetLogFormat(argv[++arg]);
+          else if (LocaleCompare("pause",option+1) == 0)
+            pause=1;
+          else if (LocaleCompare("size",option+1) == 0)
+            {
+              arg++;
+              if ((arg == argc) || !IsGeometry(argv[arg]))
+                {
+                  (void) printf("-size argument missing or not geometry\n");
+                  (void) fflush(stdout);
+                  exit_status = 1;
+                  goto program_exit;
+                }
+              (void) CloneString(&imageInfo->size,argv[arg]);
+            }
+        }
+      else
+        break;
+    }
+  if (arg != argc-2)
+    {
+      (void) printf("arg=%d, argc=%d\n", arg, argc);
+      (void) printf ( "Usage: %s -geometry geometry [-debug events "
+                      "-log format -size geometry] infile outfile\n",
+                      argv[0] );
+      (void) fflush(stdout);
+      exit_status = 1;
+      goto program_exit;
+    }
+  
+  (void) strncpy(infile, argv[arg], MaxTextExtent-1 );
+  arg++;
+  (void) strncpy(outfile, argv[arg], MaxTextExtent-1 );
+
+  /*
+   * Read original image
+   */
+
+  imageInfo->dither = 0;
+  (void) strncpy( imageInfo->filename, infile, MaxTextExtent-1 );
+  (void) fflush(stdout);
+  (void) LogMagickEvent(CoderEvent,GetMagickModule(),
+                        "Reading image %s", imageInfo->filename);
+  original = ReadImage ( imageInfo, &exception );
+  if (exception.severity != UndefinedException)
+    {
+      CatchException(&exception);
+      exit_status = 1;
+      goto program_exit;
+    }
+  if ( original == (Image *)NULL )
+    {
+      (void) printf ( "Failed to read original image %s\n", imageInfo->filename );
+      (void) fflush(stdout);
+      exit_status = 1;
+      goto program_exit;
+    }
+
+  GetImageGeometry(original,geometry_str,MagickFalse,&geometry);
+
+  resized_image = ResizeImage(original, geometry.width, geometry.height,
+                              LanczosFilter, 1.0, &exception);
+  DestroyImage( original );
+  original = (Image *) NULL;
+
+  AppendImageToList(&final,resized_image);
+
+  if ((!resized_image) || (exception.severity != UndefinedException))
+    {
+      CatchException(&exception);
+      exit_status = 1;
+      goto program_exit;
+    }
+
+  /*
+   * Save image to file
+   */
+  final->magick[0] = '\0';
+  (void) strncpy( final->filename, outfile, MaxTextExtent-1 );
+  final->delay = 10;
+  (void) fflush(stdout);
+  (void) LogMagickEvent(CoderEvent,GetMagickModule(),
+                        "Writing image %s", final->filename);
+  if (!WriteImage ( imageInfo, final ))
+    {
+      CatchException(&final->exception);
+      exit_status = 1;
+      goto program_exit;
+    }
+
+ program_exit:
+  if (original)
+    DestroyImage( original );
+  original = (Image*)NULL;
+  if (final)
+    DestroyImage( final );
+  final = (Image*)NULL;
+
+  DestroyImageInfo( imageInfo );
+  DestroyMagick();
+
+  if (pause)
+    (void) getc(stdin);
+  return exit_status;
+}

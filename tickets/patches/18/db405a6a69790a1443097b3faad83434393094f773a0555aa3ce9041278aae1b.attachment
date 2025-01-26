@@ -1,0 +1,140 @@
+diff -ur gm.old/coders/gif.c gm.new/coders/gif.c
+--- gm.old/coders/gif.c	2009-12-16 10:50:03.000000000 -0800
++++ gm.new/coders/gif.c	2010-04-19 08:07:34.000000000 -0700
+@@ -1022,6 +1022,8 @@
+           image->colormap[i].red=ScaleCharToQuantum(*p++);
+           image->colormap[i].green=ScaleCharToQuantum(*p++);
+           image->colormap[i].blue=ScaleCharToQuantum(*p++);
++          if (i == opacity)
++              image->colormap[i].opacity=(Quantum) TransparentOpacity;
+         }
+         image->background_color=
+           image->colormap[Min(background,image->colors-1)];
+@@ -1048,6 +1050,8 @@
+           image->colormap[i].red=ScaleCharToQuantum(*p++);
+           image->colormap[i].green=ScaleCharToQuantum(*p++);
+           image->colormap[i].blue=ScaleCharToQuantum(*p++);
++          if (i == opacity)
++            image->colormap[i].opacity=(Quantum) TransparentOpacity;
+         }
+         MagickFreeMemory(colormap);
+       }
+diff -ur gm.old/magick/image.c gm.new/magick/image.c
+--- gm.old/magick/image.c	2010-03-02 13:46:44.000000000 -0800
++++ gm.new/magick/image.c	2010-04-19 08:20:33.000000000 -0700
+@@ -1925,7 +1925,57 @@
+   image->is_monochrome=IsMonochrome(image->background_color);
+   return status;
+ }
+-
++
++/*
++%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
++%                                                                             %
++%                                                                             %
++%   S e t I m a g e C o l o r                                                 %
++%                                                                             %
++%                                                                             %
++%                                                                             %
++%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
++%
++%  SetImageColor() sets the red, green, blue and opacity components of each pixel to
++%  a specified level.
++%
++%  The format of the SetImageColor method is:
++%
++%      void SetImageColor(Image *image,const PixelPacket pixel)
++%
++%  A description of each parameter follows:
++%
++%    o image: The image.
++%
++%    o pixel: Set each pixel in the image to this pixel's color and transparency.
++%
++%
++*/
++MagickExport MagickPassFail SetImageColor(Image *image, const PixelPacket pixel)
++{
++  MagickPassFail
++    status;
++
++  assert(image != (Image *) NULL);
++  assert(image->signature == MagickSignature);
++  status=MagickPass;
++
++  image->matte=True;
++  image->colorspace=RGBColorspace;
++  image->storage_class=DirectClass;
++
++  status=PixelIterateMonoModify(SetImageColorCallBack,NULL,
++                                SetImageColorText,
++                                NULL,&pixel,0,0,
++                                image->columns,image->rows,
++                                image,&image->exception);
++
++  image->is_grayscale=IsGray(image->background_color);
++  image->is_monochrome=IsMonochrome(image->background_color);
++  return status;
++}
++
++
+ /*
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ %                                                                             %
+diff -ur gm.old/magick/image.h gm.new/magick/image.h
+--- gm.old/magick/image.h	2010-03-01 13:15:28.000000000 -0800
++++ gm.new/magick/image.h	2010-04-19 07:27:27.000000000 -0700
+@@ -1008,6 +1008,7 @@
+   DisplayImages(const ImageInfo *image_info,Image *image),
+   RemoveDefinitions(const ImageInfo *image_info,const char *options),
+   SetImage(Image *,const Quantum),
++  SetImageColor(Image *,const PixelPacket),
+   SetImageClipMask(Image *image,const Image *clip_mask),
+   SetImageDepth(Image *,const unsigned long),
+   SetImageInfo(ImageInfo *image_info,const unsigned int flags,ExceptionInfo *exception),
+diff -ur gm.old/magick/transform.c gm.new/magick/transform.c
+--- gm.old/magick/transform.c	2010-02-27 13:30:13.000000000 -0800
++++ gm.new/magick/transform.c	2010-04-19 07:28:35.000000000 -0700
+@@ -317,6 +317,12 @@
+   register const Image
+     *next;
+ 
++  register long
++    i;
++  
++  MagickBool
++    found_transparency=False;
++
+   /*
+     Coalesce the image sequence.
+   */
+@@ -352,9 +358,19 @@
+       }
+       case BackgroundDispose:
+       {
++        /* fill image with transparent color, if one exists */
+         coalesce_image->next=CloneImage(coalesce_image,0,0,True,exception);
+-        if (coalesce_image->next != (Image *) NULL)
+-          (void) SetImage(coalesce_image->next,OpaqueOpacity);
++        if (coalesce_image->next != (Image *) NULL) {
++          for (i = 0; i < (long) coalesce_image->colors; i++) {
++            if (coalesce_image->colormap[i].opacity == TransparentOpacity) {
++              found_transparency = True;
++              (void) SetImageColor(coalesce_image->next,coalesce_image->colormap[i]);
++              break;
++            }
++          }
++          if (!found_transparency)
++            (void) SetImage(coalesce_image->next,OpaqueOpacity);
++        }
+         break;
+       }
+       case PreviousDispose:
+@@ -376,6 +392,7 @@
+     (void) CompositeImage(coalesce_image,next->matte ? OverCompositeOp :
+       CopyCompositeOp,next,next->page.x,next->page.y);
+   }
++
+   while (coalesce_image->previous != (Image *) NULL)
+     coalesce_image=coalesce_image->previous;
+   return(coalesce_image);

@@ -1,0 +1,28 @@
+diff -r 7fbe80ac53d3 magick/attribute.c
+--- a/magick/attribute.c	Sun Nov 24 14:43:52 2019 -0600
++++ b/magick/attribute.c	Fri Dec 06 08:27:38 2019 -0600
+@@ -2524,7 +2524,23 @@
+ MagickExport const ImageAttribute *
+ GetImageClippingPathAttribute(const Image *image)
+ {
+-  return(GetImageAttribute(image,"8BIM:1999,2998"));
++  /* Get the name of the clipping path, if any.  The clipping path
++     lenth is indicated by the first character of the Pascal string */
++  const ImageAttribute *path_name = GetImageAttribute(image, "8BIM:2999,2999");
++  if ((path_name != (const ImageAttribute *) NULL) &&
++      (path_name->length > 2) &&
++      ((size_t) path_name->value[0] < path_name->length))
++    {
++      static const char prefix[] = "8BIM:1999,2998:";
++      char attr_name[280];
++      /* sprintf(attr_name, "8BIM:1999,2998:%.264s", path_name->value+1); */
++      (void) memcpy(attr_name,prefix,sizeof(prefix));
++      (void) memcpy(attr_name+sizeof(prefix)-1,path_name->value+1,
++                    (size_t) path_name->value[0]);
++      attr_name[sizeof(prefix)-1+path_name->value[0]]='\0';
++      return GetImageAttribute(image, attr_name);
++    }
++  return NULL;
+ }
+ 
+ /*

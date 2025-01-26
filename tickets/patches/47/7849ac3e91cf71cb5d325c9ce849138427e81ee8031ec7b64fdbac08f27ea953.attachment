@@ -1,0 +1,62 @@
+diff -Naur GraphicsMagick-1.3.25-wand-clear-exception/wand/magick_wand.c GraphicsMagick-1.3.25-wand-remove-image-option/wand/magick_wand.c
+--- GraphicsMagick-1.3.25-wand-clear-exception/wand/magick_wand.c	2016-10-14 00:05:45.671825602 +1100
++++ GraphicsMagick-1.3.25-wand-remove-image-option/wand/magick_wand.c	2016-10-18 12:47:12.367023878 +1100
+@@ -7005,6 +7005,47 @@
+ %                                                                             %
+ %                                                                             %
+ %                                                                             %
++%   M a g i c k R e m o v e I m a g e O p t i o n                             %
++%                                                                             %
++%                                                                             %
++%                                                                             %
++%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
++%
++%  MagickRemoveImageOption() removes an image format-specific option from the
++%  the image (.e.g MagickRemoveImageOption(wand,"jpeg","preserve-settings").
++%
++%  The format of the MagickRemoveImageOption method is:
++%
++%      unsigned int MagickRemoveImageOption(MagickWand *wand,const char *format,
++%        const char *key)
++%
++%  A description of each parameter follows:
++%
++%    o wand: The magick wand.
++%
++%    o format: The image format.
++%
++%    o key:  The key.
++%
++*/
++WandExport unsigned int MagickRemoveImageOption(MagickWand *wand,
++  const char *format,const char *key)
++{
++  char
++    option[MaxTextExtent];
++
++  assert(wand != (MagickWand *) NULL);
++  assert(wand->signature == MagickSignature);
++  (void) MagickFormatString(option,MaxTextExtent,"%.1024s:%.1024s",
++    format,key);
++  return (RemoveDefinitions(wand->image_info,option) ? True : False);
++}
++
++/*
++%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
++%                                                                             %
++%                                                                             %
++%                                                                             %
+ %   M a g i c k R e m o v e I m a g e P r o f i l e                           %
+ %                                                                             %
+ %                                                                             %
+diff -Naur GraphicsMagick-1.3.25-wand-clear-exception/wand/magick_wand.h GraphicsMagick-1.3.25-wand-remove-image-option/wand/magick_wand.h
+--- GraphicsMagick-1.3.25-wand-clear-exception/wand/magick_wand.h	2016-10-14 00:05:40.467763458 +1100
++++ GraphicsMagick-1.3.25-wand-remove-image-option/wand/magick_wand.h	2016-10-18 09:23:17.082320093 +1100
+@@ -252,6 +252,7 @@
+   MagickReduceNoiseImage(MagickWand *,const double),
+   MagickRelinquishMemory(void *),
+   MagickRemoveImage(MagickWand *),
++  MagickRemoveImageOption(MagickWand *wand,const char *,const char *),
+   MagickResampleImage(MagickWand *,const double,const double,const FilterTypes,
+     const double),
+   MagickResizeImage(MagickWand *,const unsigned long,const unsigned long,

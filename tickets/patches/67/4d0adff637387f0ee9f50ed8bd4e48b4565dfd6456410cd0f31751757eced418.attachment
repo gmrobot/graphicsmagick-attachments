@@ -1,0 +1,1205 @@
+Änderung:        16716:e62a17ec5f20
+Zweig:           replace_unary_function
+Marke:           tip
+Nutzer:          Jan Kohnert <jan@jan-kohnert.de>
+Datum:           Sun Jul 10 14:07:33 2022 +0200
+Zusammenfassung: Use std::function instead of std::unary_function if C++11 is available.
+
+diff -r abe61b46a6da -r e62a17ec5f20 ChangeLog
+--- a/ChangeLog	Sat Jun 25 08:36:20 2022 -0500
++++ b/ChangeLog	Sun Jul 10 14:07:33 2022 +0200
+@@ -1,3 +1,9 @@
++2022-07-10  Jan Kohnert  <jan@jan-kohnert.de>
++
++        * Magick++/lib/Magick++/{Drawable.h, STL.h}: use std::function 
++        instead of std::unary_function if C++11 is available, since
++        std::unary_function is deprecated in C++11; removed in C++17
++
+ 2022-06-25  Bob Friesenhahn  <bfriesen@simple.dallas.tx.us>
+ 
+         * NEWS.txt: Update with news since last release.
+diff -r abe61b46a6da -r e62a17ec5f20 Magick++/lib/Magick++/Drawable.h
+--- a/Magick++/lib/Magick++/Drawable.h	Sat Jun 25 08:36:20 2022 -0500
++++ b/Magick++/lib/Magick++/Drawable.h	Sun Jul 10 14:07:33 2022 +0200
+@@ -127,13 +127,15 @@
+   // https://en.cppreference.com/w/cpp/utility/functional/unary_function
+   // https://en.cppreference.com/w/cpp/utility/functional/function
+   //
+-#if ((defined(_MSVC_LANG) && _MSVC_LANG >= 201703L) || __cplusplus >= 201703L)
+-#  define MAGICK_UNARY_FUNCTION_DRAWCONTEXT_REF_BASE
++#if ((defined(_MSVC_LANG) && _MSVC_LANG >= 201103L) || __cplusplus >= 201103L)
++#  define MAGICK_STD_FUNCTION_DRAWCONTEXT_REF_BASE \
++  : public std::function<MagickLib::DrawContext(void)>
+ #else
+-#  define MAGICK_UNARY_FUNCTION_DRAWCONTEXT_REF_BASE
++#  define MAGICK_STD_FUNCTION_DRAWCONTEXT_REF_BASE \
++  : public std::unary_function<MagickLib::DrawContext,void>
+ #endif
+ 
+-  class MagickDLLDecl DrawableBase MAGICK_UNARY_FUNCTION_DRAWCONTEXT_REF_BASE
++  class MagickDLLDecl DrawableBase MAGICK_STD_FUNCTION_DRAWCONTEXT_REF_BASE
+   {
+   public:
+     // Constructor
+diff -r abe61b46a6da -r e62a17ec5f20 Magick++/lib/Magick++/STL.h
+--- a/Magick++/lib/Magick++/STL.h	Sat Jun 25 08:36:20 2022 -0500
++++ b/Magick++/lib/Magick++/STL.h	Sun Jul 10 14:07:33 2022 +0200
+@@ -51,10 +51,11 @@
+   // https://en.cppreference.com/w/cpp/utility/functional/function
+   //
+ 
+-#if ((defined(_MSVC_LANG) && _MSVC_LANG >= 201703L) || __cplusplus >= 201703L)
+-#  define MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++#if ((defined(_MSVC_LANG) && _MSVC_LANG >= 201103L) || __cplusplus >= 201103L)
++#  define MAGICK_STD_FUNCTION_IMAGE_REF_BASE \
++  : public std::function<void(Image&)>
+ #else
+-#  define MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE \
++#  define MAGICK_STD_FUNCTION_IMAGE_REF_BASE \
+   : public std::unary_function<Image&,void>
+ #endif
+ 
+@@ -62,7 +63,7 @@
+   // http://www.dai.ed.ac.uk/HIPR2/adpthrsh.htm
+   // Width x height define the size of the pixel neighborhood
+   // offset = constant to subtract from pixel neighborhood mean
+-  class MagickDLLDecl adaptiveThresholdImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl adaptiveThresholdImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     adaptiveThresholdImage( const unsigned int width_,
+@@ -78,7 +79,7 @@
+   };
+ 
+   // Add noise to image with specified noise type
+-  class MagickDLLDecl addNoiseImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl addNoiseImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     addNoiseImage ( NoiseType noiseType_ );
+@@ -90,7 +91,7 @@
+   };
+ 
+   // Transform image by specified affine (or free transform) matrix.
+-  class MagickDLLDecl affineTransformImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl affineTransformImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     affineTransformImage( const DrawableAffine &affine_ );
+@@ -102,7 +103,7 @@
+   };
+ 
+   // Annotate image (draw text on image)
+-  class MagickDLLDecl annotateImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl annotateImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     // Annotate using specified text, and placement location
+@@ -141,7 +142,7 @@
+   };
+ 
+   // Blur image with specified blur factor
+-  class MagickDLLDecl blurImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl blurImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     blurImage( const double radius_ = 1, const double sigma_ = 0.5 );
+@@ -154,7 +155,7 @@
+   };
+ 
+   // Border image (add border to image)
+-  class MagickDLLDecl borderImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl borderImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     borderImage( const Geometry &geometry_ = borderGeometryDefault  );
+@@ -166,7 +167,7 @@
+   };
+ 
+   // Extract channel from image
+-  class MagickDLLDecl channelImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl channelImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     channelImage( const ChannelType channel_ );
+@@ -178,7 +179,7 @@
+   };
+ 
+   // Charcoal effect image (looks like charcoal sketch)
+-  class MagickDLLDecl charcoalImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl charcoalImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     charcoalImage( const double radius_ = 1, const double sigma_ = 0.5  );
+@@ -191,7 +192,7 @@
+   };
+ 
+   // Chop image (remove vertical or horizontal subregion of image)
+-  class MagickDLLDecl chopImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl chopImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     chopImage( const Geometry &geometry_ );
+@@ -203,7 +204,7 @@
+   };
+ 
+   // Colorize image using pen color at specified percent opacity
+-  class MagickDLLDecl colorizeImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl colorizeImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     colorizeImage( const unsigned int opacityRed_,
+@@ -228,7 +229,7 @@
+   // the exchange of basic primary color grading information between
+   // equipment and software from different manufacturers.  It is a
+   // useful transform for other purposes as well.
+-  class MagickDLLDecl cdlImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl cdlImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     cdlImage( const std::string &cdl_ );
+@@ -241,7 +242,7 @@
+ 
+   // Apply a color matrix to the image channels.  The user supplied
+   // matrix may be of order 1 to 5 (1x1 through 5x5).
+-  class MagickDLLDecl colorMatrixImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl colorMatrixImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     colorMatrixImage( const unsigned int order_,
+@@ -255,7 +256,7 @@
+   };
+ 
+   // Convert the image colorspace representation
+-  class MagickDLLDecl colorSpaceImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl colorSpaceImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     colorSpaceImage( ColorspaceType colorSpace_ );
+@@ -267,7 +268,7 @@
+   };
+ 
+   // Comment image (add comment string to image)
+-  class MagickDLLDecl commentImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl commentImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     commentImage( const std::string &comment_ );
+@@ -280,7 +281,7 @@
+ 
+   // Compose an image onto another at specified offset and using
+   // specified algorithm
+-  class MagickDLLDecl compositeImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl compositeImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     compositeImage( const Image &compositeImage_,
+@@ -302,7 +303,7 @@
+   };
+ 
+   // Contrast image (enhance intensity differences in image)
+-  class MagickDLLDecl contrastImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl contrastImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     contrastImage( const unsigned int sharpen_ );
+@@ -314,7 +315,7 @@
+   };
+ 
+   // Crop image (subregion of original image)
+-  class MagickDLLDecl cropImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl cropImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     cropImage( const Geometry &geometry_ );
+@@ -326,7 +327,7 @@
+   };
+ 
+   // Cycle image colormap
+-  class MagickDLLDecl cycleColormapImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl cycleColormapImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     cycleColormapImage( const int amount_ );
+@@ -338,7 +339,7 @@
+   };
+ 
+   // Despeckle image (reduce speckle noise)
+-  class MagickDLLDecl despeckleImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl despeckleImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     despeckleImage( void );
+@@ -349,7 +350,7 @@
+   };
+ 
+   // Draw on image
+-  class MagickDLLDecl drawImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl drawImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     // Draw on image using a single drawable
+@@ -366,7 +367,7 @@
+   };
+ 
+   // Edge image (hilight edges in image)
+-  class MagickDLLDecl edgeImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl edgeImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     edgeImage( const double radius_ = 0.0  );
+@@ -378,7 +379,7 @@
+   };
+ 
+   // Emboss image (hilight edges with 3D effect)
+-  class MagickDLLDecl embossImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl embossImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     embossImage( void );
+@@ -392,7 +393,7 @@
+   };
+ 
+   // Enhance image (minimize noise)
+-  class MagickDLLDecl enhanceImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl enhanceImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     enhanceImage( void );
+@@ -403,7 +404,7 @@
+   };
+ 
+   // Equalize image (histogram equalization)
+-  class MagickDLLDecl equalizeImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl equalizeImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     equalizeImage( void );
+@@ -420,7 +421,7 @@
+   // parameter.  Parameters which are supported by image properties
+   // (gravity and backgroundColor) update those image properties as a
+   // side-effect.
+-  class MagickDLLDecl extentImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl extentImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     // Extent image using a geometry
+@@ -452,7 +453,7 @@
+   };
+ 
+   // Color to use when filling drawn objects
+-  class MagickDLLDecl fillColorImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl fillColorImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     fillColorImage( const Color &fillColor_ );
+@@ -464,7 +465,7 @@
+   };
+ 
+   // Flip image (reflect each scanline in the vertical direction)
+-  class MagickDLLDecl flipImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl flipImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     flipImage( void );
+@@ -475,7 +476,7 @@
+   };
+ 
+   // Flood-fill image with color
+-  class MagickDLLDecl floodFillColorImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl floodFillColorImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     // Flood-fill color across pixels starting at target-pixel and
+@@ -510,7 +511,7 @@
+   };
+ 
+   // Flood-fill image with texture
+-  class MagickDLLDecl floodFillTextureImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl floodFillTextureImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     // Flood-fill texture across pixels that match the color of the
+@@ -545,7 +546,7 @@
+   };
+ 
+   // Flop image (reflect each scanline in the horizontal direction)
+-  class MagickDLLDecl flopImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl flopImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     flopImage( void );
+@@ -556,7 +557,7 @@
+   };
+ 
+   // Frame image
+-  class MagickDLLDecl frameImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl frameImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     frameImage( const Geometry &geometry_ = frameGeometryDefault );
+@@ -574,7 +575,7 @@
+   };
+ 
+   // Gamma correct image
+-  class MagickDLLDecl gammaImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl gammaImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     gammaImage( const double gamma_ );
+@@ -595,7 +596,7 @@
+   // The number of neighbor pixels to be included in the convolution
+   // mask is specified by 'width_'. The standard deviation of the
+   // gaussian bell curve is specified by 'sigma_'.
+-  class MagickDLLDecl gaussianBlurImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl gaussianBlurImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     gaussianBlurImage( const double width_, const double sigma_ );
+@@ -608,7 +609,7 @@
+   };
+ 
+   // Implode image (special effect)
+-  class MagickDLLDecl implodeImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl implodeImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     implodeImage( const double factor_ = 50 );
+@@ -620,7 +621,7 @@
+   };
+ 
+   // Apply a color lookup table (Hald CLUT) to the image.
+-  class MagickDLLDecl haldClutImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl haldClutImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     haldClutImage( const Image &haldClutImage_ );
+@@ -633,7 +634,7 @@
+ 
+   // Set image validity. Valid images become empty (inValid) if
+   // argument is false.
+-  class MagickDLLDecl isValidImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl isValidImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     isValidImage( const bool isValid_ );
+@@ -645,7 +646,7 @@
+   };
+ 
+   // Label image
+-  class MagickDLLDecl labelImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl labelImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     labelImage( const std::string &label_ );
+@@ -657,7 +658,7 @@
+   };
+ 
+   // Level image
+-  class MagickDLLDecl levelImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl levelImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     levelImage( const double black_point,
+@@ -673,7 +674,7 @@
+   };
+ 
+   // Level image channel
+-  class MagickDLLDecl levelChannelImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl levelChannelImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     levelChannelImage( const Magick::ChannelType channel,
+@@ -691,7 +692,7 @@
+   };
+ 
+   // Magnify image by integral size
+-  class MagickDLLDecl magnifyImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl magnifyImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     magnifyImage( void );
+@@ -702,7 +703,7 @@
+   };
+ 
+   // Remap image colors with closest color from reference image
+-  class MagickDLLDecl mapImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl mapImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     mapImage( const Image &mapImage_ ,
+@@ -716,7 +717,7 @@
+   };
+ 
+   // Floodfill designated area with a matte value
+-  class MagickDLLDecl matteFloodfillImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl matteFloodfillImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     matteFloodfillImage( const Color &target_ ,
+@@ -736,7 +737,7 @@
+ 
+   // Filter image by replacing each pixel component with the median
+   // color in a circular neighborhood
+-  class MagickDLLDecl medianFilterImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl medianFilterImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     medianFilterImage( const double radius_ = 0.0 );
+@@ -748,7 +749,7 @@
+   };
+ 
+   // Reduce image by integral size
+-  class MagickDLLDecl minifyImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl minifyImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     minifyImage( void );
+@@ -764,7 +765,7 @@
+   // absolute rotation of -180 degrees to +180 degrees from the
+   // current position corresponding to an argument range of 0 to 2.0
+   // (1.0 for no change).
+-  class MagickDLLDecl modulateImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl modulateImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     modulateImage( const double brightness_,
+@@ -781,7 +782,7 @@
+ 
+   // Negate colors in image.  Set grayscale to only negate grayscale
+   // values in image.
+-  class MagickDLLDecl negateImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl negateImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     negateImage( const bool grayscale_ = false );
+@@ -794,7 +795,7 @@
+ 
+   // Normalize image (increase contrast by normalizing the pixel
+   // values to span the full range of color values)
+-  class MagickDLLDecl normalizeImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl normalizeImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     normalizeImage( void );
+@@ -805,7 +806,7 @@
+   };
+ 
+   // Oilpaint image (image looks like oil painting)
+-  class MagickDLLDecl oilPaintImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl oilPaintImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     oilPaintImage( const double radius_ = 3 );
+@@ -823,7 +824,7 @@
+   // MaxRGB. The defines OpaqueOpacity and TransparentOpacity are
+   // available to specify completely opaque or completely transparent,
+   // respectively.
+-  class MagickDLLDecl opacityImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl opacityImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     opacityImage( const unsigned int opacity_ );
+@@ -835,7 +836,7 @@
+   };
+ 
+   // Change color of opaque pixel to specified pen color.
+-  class MagickDLLDecl opaqueImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl opaqueImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     opaqueImage( const Color &opaqueColor_,
+@@ -849,7 +850,7 @@
+   };
+ 
+   // Quantize image (reduce number of colors)
+-  class MagickDLLDecl quantizeImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl quantizeImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     quantizeImage( const bool measureError_ = false );
+@@ -862,7 +863,7 @@
+ 
+   // Raise image (lighten or darken the edges of an image to give a
+   // 3-D raised or lowered effect)
+-  class MagickDLLDecl raiseImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl raiseImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     raiseImage( const Geometry &geometry_ = raiseGeometryDefault,
+@@ -876,7 +877,7 @@
+   };
+ 
+   // Reduce noise in image using a noise peak elimination filter
+-  class MagickDLLDecl reduceNoiseImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl reduceNoiseImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     reduceNoiseImage( void );
+@@ -890,7 +891,7 @@
+   };
+ 
+   // Resize image to a certain geomtry
+-  class MagickDLLDecl resizeImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl resizeImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     resizeImage( const Geometry &geometry_ );
+@@ -903,7 +904,7 @@
+ 
+   // Roll image (rolls image vertically and horizontally) by specified
+   // number of columnms and rows)
+-  class MagickDLLDecl rollImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl rollImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     rollImage( const Geometry &roll_ );
+@@ -918,7 +919,7 @@
+   };
+ 
+   // Rotate image counter-clockwise by specified number of degrees.
+-  class MagickDLLDecl rotateImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl rotateImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     rotateImage( const double degrees_ );
+@@ -930,7 +931,7 @@
+   };
+ 
+   // Resize image by using pixel sampling algorithm
+-  class MagickDLLDecl sampleImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl sampleImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     sampleImage( const Geometry &geometry_ );
+@@ -942,7 +943,7 @@
+   };
+ 
+   // Resize image by using simple ratio algorithm
+-  class MagickDLLDecl scaleImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl scaleImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     scaleImage( const Geometry &geometry_ );
+@@ -957,7 +958,7 @@
+   // histograms of the color components and identifying units that are
+   // homogeneous with the fuzzy c-means technique.
+   // Also uses QuantizeColorSpace and Verbose image attributes
+-  class MagickDLLDecl segmentImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl segmentImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     segmentImage( const double clusterThreshold_ = 1.0,
+@@ -971,7 +972,7 @@
+   };
+ 
+   // Shade image using distant light source
+-  class MagickDLLDecl shadeImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl shadeImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     shadeImage( const double azimuth_ = 30,
+@@ -987,7 +988,7 @@
+   };
+ 
+   // Sharpen pixels in image
+-  class MagickDLLDecl sharpenImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl sharpenImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     sharpenImage( const double radius_ = 1, const double sigma_ = 0.5 );
+@@ -1000,7 +1001,7 @@
+   };
+ 
+   // Shave pixels from image edges.
+-  class MagickDLLDecl shaveImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl shaveImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     shaveImage( const Geometry &geometry_ );
+@@ -1013,7 +1014,7 @@
+ 
+ 
+   // Shear image (create parallelogram by sliding image by X or Y axis)
+-  class MagickDLLDecl shearImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl shearImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     shearImage( const double xShearAngle_,
+@@ -1028,7 +1029,7 @@
+ 
+   // Solarize image (similar to effect seen when exposing a
+   // photographic film to light during the development process)
+-  class MagickDLLDecl solarizeImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl solarizeImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     solarizeImage( const double factor_ );
+@@ -1040,7 +1041,7 @@
+   };
+ 
+   // Spread pixels randomly within image by specified ammount
+-  class MagickDLLDecl spreadImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl spreadImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     spreadImage( const unsigned int amount_ = 3 );
+@@ -1052,7 +1053,7 @@
+   };
+ 
+   // Add a digital watermark to the image (based on second image)
+-  class MagickDLLDecl steganoImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl steganoImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     steganoImage( const Image &waterMark_ );
+@@ -1065,7 +1066,7 @@
+ 
+   // Create an image which appears in stereo when viewed with red-blue glasses
+   // (Red image on left, blue on right)
+-  class MagickDLLDecl stereoImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl stereoImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     stereoImage( const Image &rightImage_ );
+@@ -1077,7 +1078,7 @@
+   };
+ 
+   // Color to use when drawing object outlines
+-  class MagickDLLDecl strokeColorImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl strokeColorImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     strokeColorImage( const Color &strokeColor_ );
+@@ -1089,7 +1090,7 @@
+   };
+ 
+   // Swirl image (image pixels are rotated by degrees)
+-  class MagickDLLDecl swirlImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl swirlImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     swirlImage( const double degrees_ );
+@@ -1101,7 +1102,7 @@
+   };
+ 
+   // Remove all profiles and text attributes from the image.
+-  class MagickDLLDecl stripImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl stripImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     stripImage( void );
+@@ -1112,7 +1113,7 @@
+   };
+ 
+   // Channel a texture on image background
+-  class MagickDLLDecl textureImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl textureImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     textureImage( const Image &texture_ );
+@@ -1124,7 +1125,7 @@
+   };
+ 
+   // Threshold image
+-  class MagickDLLDecl thresholdImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl thresholdImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     thresholdImage( const double threshold_ );
+@@ -1136,7 +1137,7 @@
+   };
+ 
+   // Transform image based on image and crop geometries
+-  class MagickDLLDecl transformImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl transformImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     transformImage( const Geometry &imageGeometry_ );
+@@ -1152,7 +1153,7 @@
+   };
+ 
+   // Set image color to transparent
+-  class MagickDLLDecl transparentImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl transparentImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     transparentImage( const Color& color_ );
+@@ -1164,7 +1165,7 @@
+   };
+ 
+   // Trim edges that are the background color from the image
+-  class MagickDLLDecl trimImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl trimImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     trimImage( void );
+@@ -1175,7 +1176,7 @@
+   };
+ 
+   // Map image pixels to a sine wave
+-  class MagickDLLDecl waveImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl waveImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     waveImage( const double amplitude_ = 25.0,
+@@ -1189,7 +1190,7 @@
+   };
+ 
+   // Zoom image to specified size.
+-  class MagickDLLDecl zoomImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl zoomImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     zoomImage( const Geometry &geometry_ );
+@@ -1205,7 +1206,7 @@
+   //
+ 
+   // Anti-alias Postscript and TrueType fonts (default true)
+-  class MagickDLLDecl antiAliasImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl antiAliasImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     antiAliasImage( const bool flag_ );
+@@ -1217,7 +1218,7 @@
+   };
+ 
+   // Join images into a single multi-image file
+-  class MagickDLLDecl adjoinImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl adjoinImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     adjoinImage( const bool flag_ );
+@@ -1230,7 +1231,7 @@
+ 
+   // Time in 1/100ths of a second which must expire before displaying
+   // the next image in an animated sequence.
+-  class MagickDLLDecl animationDelayImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl animationDelayImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     animationDelayImage( const unsigned int delay_ );
+@@ -1243,7 +1244,7 @@
+ 
+   // Number of iterations to loop an animation (e.g. Netscape loop
+   // extension) for.
+-  class MagickDLLDecl animationIterationsImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl animationIterationsImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     animationIterationsImage( const unsigned int iterations_ );
+@@ -1255,7 +1256,7 @@
+   };
+ 
+   // Image background color
+-  class MagickDLLDecl backgroundColorImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl backgroundColorImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     backgroundColorImage( const Color &color_ );
+@@ -1267,7 +1268,7 @@
+   };
+ 
+   // Name of texture image to tile onto the image background
+-  class MagickDLLDecl backgroundTextureImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl backgroundTextureImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     backgroundTextureImage( const std::string &backgroundTexture_ );
+@@ -1279,7 +1280,7 @@
+   };
+ 
+   // Image border color
+-  class MagickDLLDecl borderColorImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl borderColorImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     borderColorImage( const Color &color_ );
+@@ -1291,7 +1292,7 @@
+   };
+ 
+   // Text bounding-box base color (default none)
+-  class MagickDLLDecl boxColorImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl boxColorImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     boxColorImage( const Color &boxColor_ );
+@@ -1303,7 +1304,7 @@
+   };
+ 
+   // Chromaticity blue primary point (e.g. x=0.15, y=0.06)
+-  class MagickDLLDecl chromaBluePrimaryImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl chromaBluePrimaryImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     chromaBluePrimaryImage( const double x_, const double y_ );
+@@ -1316,7 +1317,7 @@
+   };
+ 
+   // Chromaticity green primary point (e.g. x=0.3, y=0.6)
+-  class MagickDLLDecl chromaGreenPrimaryImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl chromaGreenPrimaryImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     chromaGreenPrimaryImage( const double x_, const double y_ );
+@@ -1329,7 +1330,7 @@
+   };
+ 
+   // Chromaticity red primary point (e.g. x=0.64, y=0.33)
+-  class MagickDLLDecl chromaRedPrimaryImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl chromaRedPrimaryImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     chromaRedPrimaryImage( const double x_, const double y_ );
+@@ -1342,7 +1343,7 @@
+   };
+ 
+   // Chromaticity white point (e.g. x=0.3127, y=0.329)
+-  class MagickDLLDecl chromaWhitePointImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl chromaWhitePointImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     chromaWhitePointImage( const double x_, const double y_ );
+@@ -1355,7 +1356,7 @@
+   };
+ 
+   // Colors within this distance are considered equal
+-  class MagickDLLDecl colorFuzzImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl colorFuzzImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     colorFuzzImage( const double fuzz_ );
+@@ -1367,7 +1368,7 @@
+   };
+ 
+   // Color at colormap position index_
+-  class MagickDLLDecl colorMapImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl colorMapImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     colorMapImage( const unsigned int index_, const Color &color_ );
+@@ -1381,7 +1382,7 @@
+ 
+   // Composition operator to be used when composition is implicitly used
+   // (such as for image flattening).
+-  class MagickDLLDecl composeImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl composeImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     composeImage( const CompositeOperator compose_ );
+@@ -1393,7 +1394,7 @@
+   };
+ 
+   // Compression type
+-  class MagickDLLDecl compressTypeImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl compressTypeImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     compressTypeImage( const CompressionType compressType_ );
+@@ -1405,7 +1406,7 @@
+   };
+ 
+   // Vertical and horizontal resolution in pixels of the image
+-  class MagickDLLDecl densityImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl densityImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     densityImage( const Geometry &geomery_ );
+@@ -1417,7 +1418,7 @@
+   };
+ 
+   // Image depth (bits allocated to red/green/blue components)
+-  class MagickDLLDecl depthImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl depthImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     depthImage( const unsigned int depth_ );
+@@ -1430,7 +1431,7 @@
+ 
+   // Endianness (LSBEndian like Intel or MSBEndian like SPARC) for image
+   // formats which support endian-specific options.
+-  class MagickDLLDecl endianImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl endianImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     endianImage( const EndianType endian_ );
+@@ -1442,7 +1443,7 @@
+   };
+ 
+   // Image file name
+-  class MagickDLLDecl fileNameImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl fileNameImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     fileNameImage( const std::string &fileName_ );
+@@ -1454,7 +1455,7 @@
+   };
+ 
+   // Filter to use when resizing image
+-  class MagickDLLDecl filterTypeImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl filterTypeImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     filterTypeImage( const FilterTypes filterType_ );
+@@ -1466,7 +1467,7 @@
+   };
+ 
+   // Text rendering font
+-  class MagickDLLDecl fontImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl fontImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     fontImage( const std::string &font_ );
+@@ -1478,7 +1479,7 @@
+   };
+ 
+   // Font point size
+-  class MagickDLLDecl fontPointsizeImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl fontPointsizeImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     fontPointsizeImage( const unsigned int pointsize_ );
+@@ -1490,7 +1491,7 @@
+   };
+ 
+   // GIF disposal method
+-  class MagickDLLDecl gifDisposeMethodImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl gifDisposeMethodImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     gifDisposeMethodImage( const unsigned int disposeMethod_ );
+@@ -1502,7 +1503,7 @@
+   };
+ 
+   // Type of interlacing to use
+-  class MagickDLLDecl interlaceTypeImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl interlaceTypeImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     interlaceTypeImage( const InterlaceType interlace_ );
+@@ -1514,7 +1515,7 @@
+   };
+ 
+   // Linewidth for drawing vector objects (default one)
+-  class MagickDLLDecl lineWidthImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl lineWidthImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     lineWidthImage( const double lineWidth_ );
+@@ -1526,7 +1527,7 @@
+   };
+ 
+   // File type magick identifier (.e.g "GIF")
+-  class MagickDLLDecl magickImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl magickImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     magickImage( const std::string &magick_ );
+@@ -1538,7 +1539,7 @@
+   };
+ 
+   // Image supports transparent color
+-  class MagickDLLDecl matteImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl matteImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     matteImage( const bool matteFlag_ );
+@@ -1550,7 +1551,7 @@
+   };
+ 
+   // Transparent color
+-  class MagickDLLDecl matteColorImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl matteColorImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     matteColorImage( const Color &matteColor_ );
+@@ -1562,7 +1563,7 @@
+   };
+ 
+   // Indicate that image is black and white
+-  class MagickDLLDecl monochromeImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl monochromeImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     monochromeImage( const bool monochromeFlag_ );
+@@ -1574,7 +1575,7 @@
+   };
+ 
+   // Pen color
+-  class MagickDLLDecl penColorImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl penColorImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     penColorImage( const Color &penColor_ );
+@@ -1586,7 +1587,7 @@
+   };
+ 
+   // Pen texture image.
+-  class MagickDLLDecl penTextureImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl penTextureImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     penTextureImage( const Image &penTexture_ );
+@@ -1598,7 +1599,7 @@
+   };
+ 
+   // Set pixel color at location x & y.
+-  class MagickDLLDecl pixelColorImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl pixelColorImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     pixelColorImage( const unsigned int x_,
+@@ -1614,7 +1615,7 @@
+   };
+ 
+   // Postscript page size.
+-  class MagickDLLDecl pageImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl pageImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     pageImage( const Geometry &pageSize_ );
+@@ -1626,7 +1627,7 @@
+   };
+ 
+   // JPEG/MIFF/PNG compression level (default 75).
+-  class MagickDLLDecl qualityImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl qualityImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     qualityImage( const unsigned int quality_ );
+@@ -1638,7 +1639,7 @@
+   };
+ 
+   // Maximum number of colors to quantize to
+-  class MagickDLLDecl quantizeColorsImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl quantizeColorsImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     quantizeColorsImage( const unsigned int colors_ );
+@@ -1650,7 +1651,7 @@
+   };
+ 
+   // Colorspace to quantize in.
+-  class MagickDLLDecl quantizeColorSpaceImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl quantizeColorSpaceImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     quantizeColorSpaceImage( const ColorspaceType colorSpace_ );
+@@ -1662,7 +1663,7 @@
+   };
+ 
+   // Dither image during quantization (default true).
+-  class MagickDLLDecl quantizeDitherImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl quantizeDitherImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     quantizeDitherImage( const bool ditherFlag_ );
+@@ -1674,7 +1675,7 @@
+   };
+ 
+   // Quantization tree-depth
+-  class MagickDLLDecl quantizeTreeDepthImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl quantizeTreeDepthImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     quantizeTreeDepthImage( const unsigned int treeDepth_ );
+@@ -1686,7 +1687,7 @@
+   };
+ 
+   // The type of rendering intent
+-  class MagickDLLDecl renderingIntentImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl renderingIntentImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     renderingIntentImage( const RenderingIntent renderingIntent_ );
+@@ -1698,7 +1699,7 @@
+   };
+ 
+   // Units of image resolution
+-  class MagickDLLDecl resolutionUnitsImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl resolutionUnitsImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     resolutionUnitsImage( const ResolutionType resolutionUnits_ );
+@@ -1710,7 +1711,7 @@
+   };
+ 
+   // Image scene number
+-  class MagickDLLDecl sceneImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl sceneImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     sceneImage( const unsigned int scene_ );
+@@ -1722,7 +1723,7 @@
+   };
+ 
+   // Width and height of a raw image
+-  class MagickDLLDecl sizeImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl sizeImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     sizeImage( const Geometry &geometry_ );
+@@ -1734,7 +1735,7 @@
+   };
+ 
+   // Subimage of an image sequence
+-  class MagickDLLDecl subImageImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl subImageImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     subImageImage( const unsigned int subImage_ );
+@@ -1746,7 +1747,7 @@
+   };
+ 
+   // Number of images relative to the base image
+-  class MagickDLLDecl subRangeImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl subRangeImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     subRangeImage( const unsigned int subRange_ );
+@@ -1758,7 +1759,7 @@
+   };
+ 
+   // Tile name
+-  class MagickDLLDecl tileNameImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl tileNameImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     tileNameImage( const std::string &tileName_ );
+@@ -1770,7 +1771,7 @@
+   };
+ 
+   // Image storage type
+-  class MagickDLLDecl typeImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl typeImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     typeImage( const ImageType type_ );
+@@ -1783,7 +1784,7 @@
+ 
+ 
+   // Print detailed information about the image
+-  class MagickDLLDecl verboseImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl verboseImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     verboseImage( const bool verbose_ );
+@@ -1795,7 +1796,7 @@
+   };
+ 
+   // FlashPix viewing parameters
+-  class MagickDLLDecl viewImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl viewImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     viewImage( const std::string &view_ );
+@@ -1808,7 +1809,7 @@
+ 
+   // X11 display to display to, obtain fonts from, or to capture
+   // image from
+-  class MagickDLLDecl x11DisplayImage MAGICK_UNARY_FUNCTION_IMAGE_REF_BASE
++  class MagickDLLDecl x11DisplayImage MAGICK_STD_FUNCTION_IMAGE_REF_BASE
+   {
+   public:
+     x11DisplayImage( const std::string &display_ );
+

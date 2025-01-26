@@ -1,0 +1,1041 @@
+# HG changeset patch
+# User Dirk Lemstra <dirk@imagemagick.org>
+# Date 1407070131 -7200
+#      Sun Aug 03 14:48:51 2014 +0200
+# Node ID c5e177e315b9d710edbe76b64705449dd93ff278
+# Parent  16cd7f9a9a60cde493483c57244f2618c4ba4251
+The user interface of configure.exe can now be uses to enable x64/OpenMP and set the quantum depth
+Fix for generating project with duplicate file names.
+Added command line options to configure.exe
+ - /Q8 /Q16 (set quantum depth)
+ - /x64 = (add x64 configuration)
+ - / mtd /sts /mts /mtsd (set project type)
+ - /noWizard (do not show the wizard)
+ - /openMP (enable openMP)
+
+diff --git a/VisualMagick/configure/configure.cpp b/VisualMagick/configure/configure.cpp
+--- a/VisualMagick/configure/configure.cpp
++++ b/VisualMagick/configure/configure.cpp
+@@ -49,25 +49,29 @@ CConfigureApp::CConfigureApp()
+ /////////////////////////////////////////////////////////////////////////////
+ // The one and only CConfigureApp object
+ 
+ CConfigureApp theApp;
+ 
+ /////////////////////////////////////////////////////////////////////////////
+ // CConfigureApp initialization
+ 
++int projectType = MULTITHREADEDDLL;
++int quantumDepth = Q8;
+ BOOL useX11Stubs = TRUE;
+ BOOL decorateFiles = FALSE;
+ BOOL optionalFiles = FALSE;
+ bool consoleMode = true;
+ BOOL standaloneMode = FALSE;
+ BOOL onebigdllMode = FALSE;
+ //BOOL generateFontmap = FALSE;
+ BOOL visualStudio7 = TRUE;
+ BOOL m_bigCoderDLL = FALSE;
++BOOL openMP = FALSE;
++BOOL build64Bit = FALSE;
+ 
+ string release_loc;
+ string debug_loc;
+ string bin_loc;
+ string lib_loc;
+ 
+ string final_release_loc;
+ string final_debug_loc;
+@@ -627,16 +631,51 @@ int CConfigureApp::load_environment_file
+       nLinesRead++;
+     }
+   }
+   inpStream.close();
+   inpStream.clear();
+   return true;
+ }
+ 
++void CConfigureApp::replace_keywords(std::string fileName)
++{
++  string
++    line,
++    str;
++
++  ifstream infile(fileName.c_str(), ifstream::in | ifstream::binary);
++  if (infile.is_open())
++    {
++      while (getline(infile,line))
++      {
++        if (!line.empty() && *line.rbegin() == '\r')
++          line.erase(line.length()-1,1);
++
++        if (line == "$$QuantumDepth")
++          {
++            if (quantumDepth == Q8)
++              line="#define QuantumDepth 8";
++            else if (quantumDepth == Q16)
++              line="#define QuantumDepth 16";
++          }
++        str += line + "\n";
++      }
++
++      infile.close();
++
++      ofstream outfile(fileName.c_str(), ofstream::out | ofstream::binary);
++      if (outfile.is_open())
++      {
++        outfile << str;
++        outfile.close();
++      }
++    }
++}
++
+ // Process a utility
+ void CConfigureApp::process_utility(
+   const char *root, const char *filename, int runtime, int project_type)
+ {
+   string basename = filename;
+   string name = LocalGetField(basename,'.',0);
+   string extn = LocalGetField(basename,'.',1);
+   if(extn.length() > 3)
+@@ -1954,16 +1993,17 @@ void CConfigureApp::process_project_repl
+                             s4 = renamed.c_str();
+                             MoveFile(s3,s4);
+                           }
+                         // If the file does not exist, then we are free to copy it over.
+                         if (CopyFile(s1,s3,FALSE))
+                           {
+                             SetFileTimeEx(s3);
+                           }
++                        replace_keywords(s3);
+                       }
+                     else if (operation == OP_RENAMEFILES)
+                       {
+                         string renamed;
+                         const char *s5;
+ 
+                         renamed = root;
+                         renamed += "\\";
+@@ -2079,32 +2119,36 @@ class MyWaitDlg : public CWaitDialog
+ {
+ public:
+   MyWaitDlg (bool *status) :
+     CWaitDialog (status, NULL, NULL, NULL)
+   {
+     nCurrent = 1;
+     nTotal = 10;
+     nPercent = 0;
++	 canPump = TRUE;
+   }
+ 
+   void Pumpit()
+   {
+     nPercent = (nCurrent * 100)/nTotal;
+     SetPercentComplete(nPercent);
+-    Pump();
++    if (canPump)
++      canPump = Pump();
+     nCurrent++;
+     if (nCurrent > nTotal)
+       nCurrent = 0;
+   }
+ 
+   int
+     nCurrent,
+     nTotal,
+     nPercent;
++  BOOL
++    canPump;
+ };
+ 
+ #define THIS_SUB_KEY FALSE
+ #define ALL_SUB_KEYS TRUE
+ 
+ #define SIGNAL_EVENT    TRUE
+ #define WAIT_FOR_CHANGE FALSE
+ 
+@@ -2833,22 +2877,28 @@ BOOL CConfigureApp::InitInstance()
+ 
+   m_pMainWnd = &wizard.m_Page1;
+ 
+   release_loc = "..\\Release\\";
+   debug_loc = "..\\Debug\\";
+   bin_loc = "..\\bin\\";
+   lib_loc = "..\\lib\\";
+ 
++  CommandLineInfo info = CommandLineInfo(quantumDepth, projectType, openMP, build64Bit);
++  ParseCommandLine(info);
++
+   wizard.m_Page2.m_useX11Stubs = useX11Stubs;
+   wizard.m_Page2.m_decorateFiles = decorateFiles;
+   wizard.m_Page2.m_optionalFiles = optionalFiles;
+   wizard.m_Page2.m_standalone = standaloneMode;
+   wizard.m_Page2.m_visualStudio7 = visualStudio7;
+   //wizard.m_Page2.m_bigCoderDLL = m_bigCoderDLL;
++  wizard.m_Page2.m_build64Bit = info.build64Bit();
++  wizard.m_Page2.m_openMP = info.openMP();
++  wizard.m_Page2.m_projectType = info.projectType();
+ 
+   wizard.m_Page3.m_tempRelease = release_loc.c_str();
+   wizard.m_Page3.m_tempDebug = debug_loc.c_str();
+   wizard.m_Page3.m_outputBin = bin_loc.c_str();
+   wizard.m_Page3.m_outputLib = lib_loc.c_str();
+ 
+ #ifdef GEN_FONTMAP_OPTION
+   if (!generateFontmap)
+@@ -2918,27 +2968,37 @@ BOOL CConfigureApp::InitInstance()
+               }
+             fontmap << "</xml>" << endl;
+             registry.Close();
+           }
+         }
+     }
+ #endif
+ 
+-  int nResponse = wizard.DoModal();
++  int nResponse = ID_WIZFINISH;
++  if (info.noWizard())
++    {
++      wizard.Create();
++      wizard.ShowWindow(SW_HIDE);
++    }
++  else
++    nResponse = wizard.DoModal();
+   if (nResponse == ID_WIZFINISH)
+     {
+       bool
+         bContinue = TRUE;
+ 
+       useX11Stubs = wizard.m_Page2.m_useX11Stubs;
+       decorateFiles = wizard.m_Page2.m_decorateFiles;
+       optionalFiles = wizard.m_Page2.m_optionalFiles;
+       standaloneMode = wizard.m_Page2.m_standalone;
+       visualStudio7 = wizard.m_Page2.m_visualStudio7;
++      build64Bit = wizard.m_Page2.m_build64Bit;
++      openMP = wizard.m_Page2.m_openMP;
++      quantumDepth = wizard.m_Page2.m_quantumDepth;
+       //m_bigCoderDLL = wizard.m_Page2.m_bigCoderDLL;
+       release_loc = wizard.m_Page3.m_tempRelease;
+       debug_loc = wizard.m_Page3.m_tempDebug;
+       bin_loc = wizard.m_Page3.m_outputBin;
+       lib_loc = wizard.m_Page3.m_outputLib;
+ 
+       int projectType = wizard.m_Page2.m_projectType;
+ 
+@@ -3169,17 +3229,17 @@ ConfigureProject *CConfigureApp::write_p
+   // of the build process.
+   bool isCOMproject = false;
+   string strPath = root.c_str();
+   if (LocalFindNoCase(strPath,"\\ATL\\",0) > 0)
+     isCOMproject = true;
+ 
+   project->write_begin_project(libname.c_str(), dll?DLLPROJECT:LIBPROJECT);
+ 
+-  project->write_configuration(libname.c_str(), "Win32 Release", 0);
++  project->write_configuration(libname.c_str(), (build64Bit ? "x64 Release" : "Win32 Release"), 0);
+ 
+   project->write_properties(libname.c_str(),
+                             get_full_path(root + "\\",lib_path).c_str(), // output
+                             get_full_path(root + "\\",release_path).c_str(), // intermediate
+                             "", // target
+                             dll?DLLPROJECT:LIBPROJECT, 0);
+ 
+   outname = prefix.c_str();
+@@ -3220,17 +3280,17 @@ ConfigureProject *CConfigureApp::write_p
+       target = get_full_path(root + "\\",bin_path);
+       target += outname;
+       target += ".dll";
+ 
+       project->write_custom_tool(trigger.c_str(), target.c_str(),
+                                  runtime, project_type, dll?DLLPROJECT:LIBPROJECT, 0, isCOMproject);
+     }
+ 
+-  project->write_configuration(libname.c_str(), "Win32 Debug", 1);
++  project->write_configuration(libname.c_str(), (build64Bit ? "x64 Debug" : "Win32 Debug"), 1);
+ 
+   project->write_properties(libname.c_str(),
+                             get_full_path(root + "\\",lib_path).c_str(), // output
+                             get_full_path(root + "\\",debug_path).c_str(), // intermediate
+                             "", // target
+                             dll?DLLPROJECT:LIBPROJECT, 1);
+ 
+   outname = prefix.c_str();
+@@ -3312,24 +3372,24 @@ ConfigureProject *CConfigureApp::write_p
+       i++;
+       if ((valid_dirs[i].group == NULL) || (group.compare(valid_dirs[i].group) != 0))
+         {
+           // add in any hard coded sources from the config file
+           if (group.compare("src") == 0)
+             {
+               for (list<string>::iterator it = source_list.begin();
+                    it != source_list.end(); it++)
+-                project->write_file((*it).c_str());
++                project->write_file(*it);
+             }
+           // add in any hard coded resources from the config file
+           if (group.compare("resource") == 0)
+             {
+               for (list<string>::iterator it2 = resource_list.begin();
+                    it2 != resource_list.end(); it2++)
+-                project->write_file((*it2).c_str());
++                project->write_file(*it2);
+             }
+           project->write_end_group();
+           if (valid_dirs[i].group != NULL)
+             {
+               group = valid_dirs[i].group;
+               project->write_begin_group(group.c_str());
+             }
+         }
+@@ -3337,16 +3397,85 @@ ConfigureProject *CConfigureApp::write_p
+   //project->write_end_group();
+   project->write_end_target();
+   project->write_end_project();
+ 
+   project->m_stream.close();
+   return project;
+ }
+ 
++CommandLineInfo::CommandLineInfo(int quantumDepth, int projectType, BOOL openMP, BOOL build64Bit)
++{
++  m_quantumDepth = quantumDepth;
++  m_projectType = projectType;
++  m_openMP = openMP;
++  m_build64Bit = build64Bit;
++  m_noWizard = FALSE;
++}
++
++CommandLineInfo::CommandLineInfo(const CommandLineInfo& obj)
++{
++  *this = obj;
++}
++
++CommandLineInfo& CommandLineInfo::operator=(const CommandLineInfo& obj)
++{
++  return *this;
++}
++
++BOOL CommandLineInfo::build64Bit()
++{
++  return m_build64Bit;
++}
++
++BOOL CommandLineInfo::noWizard()
++{
++  return m_noWizard;
++}
++
++BOOL CommandLineInfo::openMP()
++{
++  return m_openMP;
++}
++
++int CommandLineInfo::projectType()
++{
++  return m_projectType;
++}
++
++int CommandLineInfo::quantumDepth()
++{
++  return m_quantumDepth;
++}
++
++void CommandLineInfo::ParseParam(const char* pszParam, BOOL bFlag, BOOL bLast)
++{
++  if (!bFlag)
++    return;
++
++  if (strcmpi(pszParam, "x64") == 0)
++    m_build64Bit = TRUE;
++  else if (strcmpi(pszParam, "mtd") == 0)
++    m_projectType = MULTITHREADEDDLL;
++  else if (strcmpi(pszParam, "sts") == 0)
++    m_projectType = SINGLETHREADEDSTATIC;
++  else if (strcmpi(pszParam, "mts") == 0)
++    m_projectType = MULTITHREADEDSTATIC;
++  else if (strcmpi(pszParam, "mtsd") == 0)
++    m_projectType = MULTITHREADEDSTATICDLL;
++  else if (strcmpi(pszParam, "noWizard") == 0)
++    m_noWizard = TRUE;
++  else if (strcmpi(pszParam, "openMP") == 0)
++    m_openMP = TRUE;
++  else if (strcmpi(pszParam, "Q8") == 0)
++    m_quantumDepth=Q8;
++  else if (strcmpi(pszParam, "Q16") == 0)
++    m_quantumDepth=Q16;
++}
++
+ ConfigureProject *CConfigureApp::write_project_exe(
+   int runtime,
+   int project_type,
+   string root,
+   string search,
+   string dspname,
+   string prefix,
+   string extn)
+@@ -3386,17 +3515,17 @@ ConfigureProject *CConfigureApp::write_p
+     debug_path += extra_path;
+   debug_path += debug_loc;
+   if (release_loc[0]=='.')
+     release_path += extra_path;
+   release_path += release_loc;
+ 
+   project->write_begin_project(libname.c_str(), EXEPROJECT);
+ 
+-  project->write_configuration(libname.c_str(), "Win32 Release", 0);
++  project->write_configuration(libname.c_str(), (build64Bit ? "x64 Release" : "Win32 Release"), 0);
+ 
+   project->write_properties(libname.c_str(),
+                             get_full_path(root + "\\",bin_path).c_str(), // output
+                             get_full_path(root + "\\",release_path).c_str(), // intermediate
+                             "", // target
+                             EXEPROJECT, 0);
+ 
+   if (decorateFiles)
+@@ -3451,17 +3580,17 @@ ConfigureProject *CConfigureApp::write_p
+                            get_full_path(root + "\\",bin_path).c_str(),
+                            runtime, project_type, EXEPROJECT, 0);
+ 
+     /* Remove newly added libraries. */
+   while(LibCount < lib_shared_list.size())
+     lib_shared_list.pop_back();
+   /* ...... */
+ 
+-  project->write_configuration(libname.c_str(), "Win32 Debug", 1);
++  project->write_configuration(libname.c_str(), (build64Bit ? "x64 Debug" : "Win32 Debug"), 1);
+ 
+   project->write_properties(libname.c_str(),
+                             get_full_path(root + "\\",bin_path).c_str(), // output
+                             get_full_path(root + "\\",debug_path).c_str(), // intermediate
+                             "", // target
+                             EXEPROJECT, 1);
+ 
+   if (decorateFiles)
+@@ -3541,17 +3670,17 @@ ConfigureProject *CConfigureApp::write_p
+ 
+   group = valid_dirs[0].group;
+   project->write_begin_group(group.c_str());
+   {
+     for (list<string>::iterator it = source_list.begin();
+          it != source_list.end();
+          it++)
+       {
+-        project->write_file((*it).c_str());
++        project->write_file(*it);
+       }
+   }
+   for (int i=0; valid_dirs[i].group != NULL; i++)
+     {
+       if (_tcsicmp(group.c_str(), valid_dirs[i].group) != 0)
+         {
+           project->write_end_group();
+           group = valid_dirs[i].group;
+@@ -3666,22 +3795,22 @@ void ConfigureProject::generate_dir(
+               || project_type == ADD_ON || project_type == MODULE)
+             {
+               int levels = LocalGetFieldCount(path,'\\');
+               string relpath = "..\\";
+               for (int j=0; j<(levels-3); j++)
+                 relpath += "..\\";
+               relpath += path;
+               relpath += data.cFileName;
+-              write_file(get_full_path(dir,relpath).c_str());
++              write_file(get_full_path(dir,relpath));
+             }
+           else
+             {
+               string relpath = otherpath + data.cFileName;
+-              write_file(get_full_path("",relpath).c_str());
++              write_file(get_full_path("",relpath));
+             }
+ 
+         } while (FindNextFile(handle, &data));
+       FindClose(handle);
+     }
+ }
+ 
+ // --------------------------------------------------------------------------------------------------
+@@ -4423,17 +4552,17 @@ void ConfigureVS6Project::write_begin_gr
+   m_stream << "# PROP Default_Filter \"\"" << endl;
+ }
+ 
+ void ConfigureVS6Project::write_end_group()
+ {
+   m_stream << "# End Group" << endl;
+ }
+ 
+-void ConfigureVS6Project::write_file(const char *filename)
++void ConfigureVS6Project::write_file(string &filename)
+ {
+   m_stream << "# Begin Source File" << endl;
+   m_stream << "SOURCE=" << filename << endl;
+ #if 0 // FIXME TODO
+   "# PROP Intermediate_Dir "Release\dir1""
+ #endif
+   m_stream << "# End Source File" << endl;
+ }
+@@ -4507,20 +4636,20 @@ void ConfigureVS7Workspace::write_end()
+ 
+   m_stream << "\tGlobalSection(ProjectConfiguration) = postSolution" << endl;
+   for (
+        list<ConfigureProject*>::iterator it1 = dependency_list.begin();
+        it1 != dependency_list.end();
+        it1++)
+     {
+       string guid = (*it1)->m_GuidText;
+-      m_stream << "\t\t{" << guid.c_str() << "}.Debug.ActiveCfg = Debug|Win32" << endl;
+-      m_stream << "\t\t{" << guid.c_str() << "}.Debug.Build.0 = Debug|Win32" << endl;
+-      m_stream << "\t\t{" << guid.c_str() << "}.Release.ActiveCfg = Release|Win32" << endl;
+-      m_stream << "\t\t{" << guid.c_str() << "}.Release.Build.0 = Release|Win32" << endl;
++      m_stream << "\t\t{" << guid.c_str() << "}.Debug.ActiveCfg = Debug|" << (build64Bit ? "x64" : "Win32") << endl;
++      m_stream << "\t\t{" << guid.c_str() << "}.Debug.Build.0 = Debug|" << (build64Bit ? "x64" : "Win32") << endl;
++      m_stream << "\t\t{" << guid.c_str() << "}.Release.ActiveCfg = Release|" << (build64Bit ? "x64" : "Win32") << endl;
++      m_stream << "\t\t{" << guid.c_str() << "}.Release.Build.0 = Release|" << (build64Bit ? "x64" : "Win32") << endl;
+     }
+   m_stream << "\tEndGlobalSection" << endl;
+ 
+   m_stream << "\tGlobalSection(ExtensibilityGlobals) = postSolution" << endl;
+   m_stream << "\tEndGlobalSection" << endl;
+   m_stream << "\tGlobalSection(ExtensibilityAddIns) = postSolution" << endl;
+   m_stream << "\tEndGlobalSection" << endl;
+   m_stream << "EndGlobal" << endl;
+@@ -4570,19 +4699,19 @@ ConfigureVS7Project::~ConfigureVS7Projec
+ void ConfigureVS7Project::write_begin_project(const char *name, int type)
+ {
+   m_stream << "<?xml version=\"1.0\" encoding = \"Windows-1252\"?>" << endl;
+   m_stream << "<VisualStudioProject" << endl;
+   m_stream << "  ProjectType=\"Visual C++\"" << endl;
+   m_stream << "  Version=\"7.00\"" << endl;
+   m_stream << "  Name=\"" << name << "\"" << endl;
+   m_stream << "  ProjectGUID=\"{" << m_GuidText << "}\"" << endl;
+-  m_stream << "  Keyword=\"Win32Proj\">" << endl;
++  m_stream << "  Keyword=\"" << (build64Bit ? "x64" : "Win32") << "Proj\">" << endl;
+   m_stream << "  <Platforms>" << endl;
+-  m_stream << "    <Platform Name=\"Win32\"/>" << endl;
++  m_stream << "    <Platform Name=\""<< (build64Bit ? "x64" : "Win32") << "\"/>" << endl;
+   m_stream << "  </Platforms>" << endl;
+ }
+ 
+ void ConfigureVS7Project::write_end_project()
+ {
+   m_stream << "  <Globals>" << endl;
+   m_stream << "  </Globals>" << endl;
+   m_stream << "</VisualStudioProject>" << endl;
+@@ -4613,20 +4742,20 @@ void ConfigureVS7Project::write_properti
+                                             const char *outputpath,
+                                             const char *intermediatepath,
+                                             const char *targetpath,
+                                             int type, int mode )
+ {
+   switch (mode)
+     {
+     case 0:
+-      m_stream << "      Name=\"Release|Win32\"" << endl;
++      m_stream << "      Name=\"Release|" << (build64Bit ? "x64" : "Win32") << "\"" << endl;
+       break;
+     case 1:
+-      m_stream << "      Name=\"Debug|Win32\"" << endl;
++      m_stream << "      Name=\"Debug|" << (build64Bit ? "x64" : "Win32") << "\"" << endl;
+       break;
+     }
+   m_stream << "      OutputDirectory=\"" << outputpath << "\"" << endl;
+   m_stream << "      IntermediateDirectory=\"" << intermediatepath << name << "\"" << endl;
+   switch (type)
+     {
+     case EXEPROJECT:
+       m_stream << "      ConfigurationType=\"1\"" << endl;
+@@ -4814,16 +4943,18 @@ void ConfigureVS7Project::write_cpp_comp
+   m_stream << "        WarningLevel=\"3\"" << endl; // /W3
+   // pchNone 0,pchCreateUsingSpecific 1,pchGenerateAuto 2,pchUseUsingSpecific 3 
+   m_stream << "        UsePrecompiledHeader=\"0\"" << endl;
+   m_stream << "        SuppressStartupBanner=\"TRUE\"" << endl; // /nologo
+   // compileAsDefault 0,compileAsC 1,compileAsCPlusPlus 2 
+   m_stream << "        CompileAs=\"0\"" << endl; // C or C++ compile
+   // expandDisable 0,expandOnlyInline 1,expandAnySuitable 2 
+   m_stream << "        InlineFunctionExpansion=\"2\"" << endl;
++  if (openMP)
++    m_stream << "        OpenMP=\"TRUE\"" << endl;
+   switch (mode)
+     {
+     case 0:
+ #ifndef SYMBOLS_ALWAYS
+       // debugDisabled 0,debugOldStyleInfo 1,debugLineInfoOnly 2,debugEnabled 3,debugEditAndContinue 4 
+       m_stream << "        DebugInformationFormat=\"0\"" << endl; // /Z7,/Zd,/Zi,/ZI
+ #else
+       // debugDisabled 0,debugOldStyleInfo 1,debugLineInfoOnly 2,debugEnabled 3,debugEditAndContinue 4 
+@@ -4980,17 +5111,20 @@ void ConfigureVS7Project::write_link_too
+     {
+     case 0:
+       strmode = "RL_";
+       break;
+     case 1:
+       strmode = "DB_";
+       break;
+     }
+-  m_stream << "        AdditionalDependencies=\"";
++  if (build64Bit)
++    m_stream << "        AdditionalDependencies=\"/MACHINE:AMD64 ";
++  else
++    m_stream << "        AdditionalDependencies=\"/MACHINE:X86 ";
+   if (onebigdllMode || (standaloneMode && (type == EXEPROJECT)))
+     {
+       switch (runtime)
+         {
+         case MULTITHREADEDSTATIC:
+         case SINGLETHREADEDSTATIC:
+         case MULTITHREADEDSTATICDLL:
+           {
+@@ -5095,17 +5229,17 @@ void ConfigureVS7Project::write_link_too
+ void ConfigureVS7Project::write_link_tool_options( bool bNeedsRelo,
+                                                    int type,
+                                                    int mode,
+                                                    const string &defs_path)
+ {
+   m_stream << "        SuppressStartupBanner=\"TRUE\"" << endl; // /nologo
+   // linkIncrementalDefault 0, linkIncrementalNo 1, linkIncrementalYes 2 
+   m_stream << "        LinkIncremental=\"1\"" << endl;
+-  m_stream << "        TargetMachine=\"1\"" << endl;
++  m_stream << "        TargetMachine=\"" << (build64Bit ? "17" : "1") << "\"" << endl;
+ 
+   //subSystemNotSet 0,subSystemConsole 1,subSystemWindows 2
+   switch(type)
+     {
+     case EXEPROJECT:
+       if (consoleMode)
+         m_stream << "        SubSystem=\"1\"" << endl;
+       else
+@@ -5217,19 +5351,44 @@ void ConfigureVS7Project::write_begin_gr
+   m_stream << "    <Filter Name=\"" << name << "\" Filter=\"\">" << endl;
+ }
+ 
+ void ConfigureVS7Project::write_end_group()
+ {
+   m_stream << "    </Filter>" << endl;
+ }
+ 
+-void ConfigureVS7Project::write_file(const char *filename)
+-{
+-  m_stream << "      <File RelativePath=\"" << filename << "\"/>" << endl;
++void ConfigureVS7Project::write_file(string &filename)
++{
++  string name = filename.substr(filename.find_last_of("\\") + 1);
++  int count = 1;
++  if (name.substr(name.find_last_of(".")) == ".c")
++   {
++     if (m_fileNames.find(name) == m_fileNames.end())
++       m_fileNames.insert(make_pair(name, count));
++     else
++       count = ++m_fileNames[name];
++   }
++
++  if (count == 1)
++    {
++      m_stream << "      <File RelativePath=\"" << filename << "\"/>" << endl;
++    }
++  else
++    {
++      name = name.substr(0, name.find_last_of(".") + 1);
++      m_stream << "      <File RelativePath=\"" << filename << "\">" << endl;
++      m_stream << "        <FileConfiguration Name=\"Debug|" << (build64Bit ? "x64" : "Win32") << "\">" << endl;
++      m_stream << "          <Tool Name=\"VCCLCompilerTool\" ObjectFile=\"$(IntDir)" << name << count << ".obj\"/>" << endl;
++      m_stream << "        </FileConfiguration>" << endl;
++      m_stream << "        <FileConfiguration Name=\"Release|" << (build64Bit ? "x64 " : "Win32") << "\">" << endl;
++      m_stream << "          <Tool Name=\"VCCLCompilerTool\" ObjectFile=\"$(IntDir)" << name << count << ".obj\"/>" << endl;
++      m_stream << "        </FileConfiguration>" << endl;
++      m_stream << "      </File>" << endl;
++    }
+ }
+ 
+ BOOL BrowseForFolder(HWND hOwner, char* szTitle, char* szRetval)
+ {
+   BROWSEINFO info;
+   LPITEMIDLIST itemidlist;
+   char szDirectory[_MAX_PATH];
+   LPMALLOC pMalloc;
+diff --git a/VisualMagick/configure/configure.h b/VisualMagick/configure/configure.h
+--- a/VisualMagick/configure/configure.h
++++ b/VisualMagick/configure/configure.h
+@@ -18,29 +18,31 @@
+ #ifndef _USE_OLD_IOSTREAMS
+ #include <fstream>
+ #else
+ #include <fstream.h> // WTR
+ #endif
+ 
+ #include <string>
+ #include <list>
++#include <map>
+ 
+ using namespace std;
+ 
+ /////////////////////////////////////////////////////////////////////////////
+ // CConfigureApp:
+ // See Configure.cpp for the implementation of this class
+ /////////////////////////////////////////////////////////////////////////////
+ 
+ enum {MULTITHREADEDDLL, SINGLETHREADEDSTATIC, MULTITHREADEDSTATIC, MULTITHREADEDSTATICDLL};
+ enum {DLLPROJECT, LIBPROJECT, EXEPROJECT};
+ enum {DISABLED, UTILITY, LIBRARY, STATICLIB, MODULE, ADD_ON, THIRDPARTY, PROJECT};
+ enum {CPPCOMPILETOOL, RESCOMPILETOOL, MIDLCOMPILETOOL, LIBRARYTOOL, LINKERTOOL};
+ enum {OP_REPLACEFILES, OP_RENAMEFILES};
++enum {Q8, Q16};
+ 
+ class ConfigureProject
+ {
+ public:
+   ConfigureProject();
+   GUID m_guid;
+   TCHAR m_GuidText[250];
+   ofstream m_stream;
+@@ -60,17 +62,17 @@ public:
+                     std::list<std::string> &exclude_list);
+ 
+   virtual void write_begin_group(const char *name) = 0;
+   virtual void write_end_group(void) = 0;
+   virtual void write_begin_target(const char* name) = 0;
+   virtual void write_end_target(void) = 0;
+   virtual void write_begin_project(const char *name,int type) = 0;
+   virtual void write_end_project(void) = 0;
+-  virtual void write_file(const char *filename) = 0;
++  virtual void write_file(string &filename) = 0;
+   virtual void write_configuration(const char *name, const char *subname,
+                                    int state) = 0;
+   virtual void write_properties(const char *name,
+                                 const char *outputpath,
+                                 const char *intermediatepath,
+                                 const char *targetpath, int type,
+                                 int mode) = 0;
+ 
+@@ -166,17 +168,17 @@ public:
+   ~ConfigureVS6Project( void );
+ 
+   void write_begin_group(const char *name);
+   void write_end_group(void);
+   void write_begin_target(const char* name);
+   void write_end_target(void);
+   void write_begin_project(const char *name,int type);
+   void write_end_project(void);
+-  void write_file(const char *filename);
++  void write_file(string &filename);
+   void write_configuration(const char *name, const char *subname, int state);
+   void write_properties(const char *name,
+                         const char *outputpath, const char *intermediatepath,
+                         const char *targetpath, int type, int mode);
+   void write_cpp_compiler_tool(string &root, string &extra_path,
+                                list<string> &includes_list,
+                                list<string> &standard_includes_list,
+                                list<string> &defines_list,
+@@ -245,24 +247,25 @@ public:
+   void write_project_dependency(ConfigureProject *project, const char *dep_name);
+ };
+ 
+ class ConfigureVS7Project : public ConfigureProject
+ {
+ public:
+   ConfigureVS7Project() {};
+   ~ConfigureVS7Project( void );
++  map<string, int> m_fileNames;
+ 
+   void write_begin_group(const char *name);
+   void write_end_group(void);
+   void write_begin_target(const char* name);
+   void write_end_target(void);
+   void write_begin_project(const char *name,int type);
+   void write_end_project(void);
+-  void write_file(const char *filename);
++  void write_file(string &filename);
+   void write_configuration(const char *name, const char *subname, int state);
+   void write_properties(const char *name,
+                         const char *outputpath,
+                         const char *intermediatepath,
+                         const char *targetpath,
+                         int type, int mode);
+ 
+   void write_cpp_compiler_tool(string &root, string &extra_path,
+@@ -329,16 +332,36 @@ public:
+   void write_end(void);
+   void write_begin_project(ConfigureProject *project, const char *name,
+                            const char *filename);
+   void write_end_project(ConfigureProject *project);
+   void write_project_dependency(ConfigureProject *project, string &dep_name);
+   void write_project_dependency(ConfigureProject *project, const char *dep_name);
+ };
+ 
++class CommandLineInfo : public CCommandLineInfo
++{
++  BOOL m_build64Bit;
++  BOOL m_noWizard;
++  BOOL m_openMP;
++  int m_projectType;
++  int m_quantumDepth;
++public:
++  CommandLineInfo(int quantumDepth, int projectType, BOOL openMP, BOOL build64Bit);
++  CommandLineInfo(const CommandLineInfo& obj);
++  CommandLineInfo& operator =(const CommandLineInfo& obj);
++  BOOL build64Bit();
++  BOOL noWizard();
++  BOOL openMP();
++  int projectType();
++  int quantumDepth();
++
++  virtual void ParseParam(const char* pszParam, BOOL bFlag, BOOL bLast);
++};
++
+ class CConfigureApp : public CWinApp
+ {
+ public:
+   CConfigureApp();
+   ConfigureWorkspace *workspace;
+   ConfigureProject *project;
+ 
+   // Overrides
+@@ -403,16 +426,17 @@ public:
+                              char *s, bool flag1, bool flag2);
+   void generate_a_dependency_cs(ConfigureWorkspace *w,ConfigureProject *p,
+                                 char *s);
+   void generate_a_dependency_type(ConfigureWorkspace *w,ConfigureProject *p,
+                                   int t);
+   bool CConfigureApp::process_one_entry(const char *entry, int nLinesRead,
+                                         int runtime);
+   int CConfigureApp::load_environment_file( const char *inputfile, int runtime);
++  void replace_keywords(std::string fileName);
+ };
+ 
+ bool is_project_type(const char *root, const int project_type);
+ BOOL BrowseForFolder(HWND hOwner, char* szTitle, char* szRetval);
+ 
+ /////////////////////////////////////////////////////////////////////////////
+ 
+ //{{AFX_INSERT_LOCATION}}
+diff --git a/VisualMagick/configure/configure.rc b/VisualMagick/configure/configure.rc
+--- a/VisualMagick/configure/configure.rc
++++ b/VisualMagick/configure/configure.rc
+@@ -106,34 +106,43 @@ BEGIN
+                     "Button",BS_AUTORADIOBUTTON,15,64,113,10
+     CONTROL         "Static Multi-threaded runtimes",IDC_PROJECT_TYPE2,
+                     "Button",BS_AUTORADIOBUTTON,15,79,109,10
+     CONTROL         "Use X11 stubs to prevent use of X Window",
+                     IDC_USE_X11_STUBS,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,
+                     153,33,152,10
+     CONTROL         "Decorate exe files with build options",
+                     IDC_DECORATE_FILES,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,
+-                    15,135,139,10
+-    GROUPBOX        "Build options",IDC_STATIC,7,122,304,77
++                    15,151,139,10
++    GROUPBOX        "Build options",IDC_STATIC,7,122,304,93
+     CONTROL         "Static Multi-threaded DLL runtimes",IDC_PROJECT_TYPE3,
+                     "Button",BS_AUTORADIOBUTTON,15,95,124,10
+     LTEXT           "Static Builds",IDC_STATIC,13,50,40,8
+     LTEXT           "Dynamic (DLL) Builds",IDC_STATIC,13,19,68,8
+     CONTROL         "Include all demo, test, appl, and contrib directories",
+                     IDC_INCLUDE_OPTIONAL,"Button",BS_AUTOCHECKBOX | 
+-                    WS_TABSTOP,15,151,204,10
++                    WS_TABSTOP,15,167,204,10
+     CONTROL         "Generate all utility projects with full paths rather then relative paths.",
+                     IDC_STANDALONE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,15,
+-                    167,236,10
+-    PUSHBUTTON      "Edit ""magick_config.h""",IDC_EditConfig,109,204,92,14
++                    182,236,10
++    PUSHBUTTON      "Edit ""magick_config.h""",IDC_EditConfig,109,219,92,14
+     CONTROL         "Generate Visual Studio 7 format",IDC_GENERATE_VS7,
+-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,15,182,140,10
++                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,15,198,140,10
+     CONTROL         "All coders go into one big DLL",IDC_BIGCODERDLL,"Button",
+                     BS_AUTOCHECKBOX | NOT WS_VISIBLE | WS_TABSTOP,186,134,
+                     111,10
++    CONTROL         "Build 64-bit distribution",IDC_BUILD_64_BIT,"Button",
++                    BS_AUTOCHECKBOX | WS_TABSTOP,15,135,
++                    100,10
++    LTEXT           "Quantum depth",IDC_STATIC,205,134,55,8
++    COMBOBOX        IDC_QUANTUM_DEPTH,260,132,47,50,CBS_DROPDOWNLIST |
++                    WS_VSCROLL | WS_TABSTOP
++    CONTROL         "Enable OpenMP",IDC_OPEN_MP,"Button",
++                    BS_AUTOCHECKBOX | WS_TABSTOP,205,148,
++                    66,10
+ END
+ 
+ IDD_SYSTEM_PAGE DIALOG  0, 0, 318, 233
+ STYLE DS_SETFONT | WS_CHILD | WS_DISABLED | WS_CAPTION
+ CAPTION "System Setup"
+ FONT 8, "MS Sans Serif"
+ BEGIN
+     GROUPBOX        "Intermediate files directory setup:",IDC_STATIC,7,7,304,
+@@ -264,16 +273,28 @@ BEGIN
+         END
+     END
+     BLOCK "VarFileInfo"
+     BEGIN
+         VALUE "Translation", 0x409, 1200
+     END
+ END
+ 
++/////////////////////////////////////////////////////////////////////////////
++//
++// Dialog Info
++//
++
++IDD_TARGET_PAGE DLGINIT
++BEGIN
++    IDC_QUANTUM_DEPTH, 0x403, 3, 0,
++0x3851, "\000"
++    IDC_QUANTUM_DEPTH, 0x403, 4, 0,
++0x3151, 0x0036
++END
+ 
+ /////////////////////////////////////////////////////////////////////////////
+ //
+ // String Table
+ //
+ 
+ STRINGTABLE 
+ BEGIN
+diff --git a/VisualMagick/configure/resource.h b/VisualMagick/configure/resource.h
+--- a/VisualMagick/configure/resource.h
++++ b/VisualMagick/configure/resource.h
+@@ -34,22 +34,25 @@
+ #define IDC_USE_X11_STUBS               1023
+ #define IDC_BuildIt                     1024
+ #define IDC_DECORATE_FILES              1025
+ #define IDC_INCLUDE_OPTIONAL            1026
+ #define IDC_STANDALONE                  1027
+ #define IDC_EditConfig                  1028
+ #define IDC_GENERATE_VS7                1029
+ #define IDC_BIGCODERDLL                 1030
++#define IDC_QUANTUM_DEPTH               1031
++#define IDC_BUILD_64_BIT                1032
++#define IDC_OPEN_MP                     1033
+ #define IDD_WAITDIALOG                  23040
+ #define IDC_MSGCTRL                     23041
+ #define IDC_PROGRESSCTRL                23042
+ 
+ // Next default values for new objects
+ // 
+ #ifdef APSTUDIO_INVOKED
+ #ifndef APSTUDIO_READONLY_SYMBOLS
+ #define _APS_NEXT_RESOURCE_VALUE        133
+ #define _APS_NEXT_COMMAND_VALUE         32771
+-#define _APS_NEXT_CONTROL_VALUE         1031
++#define _APS_NEXT_CONTROL_VALUE         1034
+ #define _APS_NEXT_SYMED_VALUE           105
+ #endif
+ #endif
+diff --git a/VisualMagick/configure/target_page.cpp b/VisualMagick/configure/target_page.cpp
+--- a/VisualMagick/configure/target_page.cpp
++++ b/VisualMagick/configure/target_page.cpp
+@@ -14,58 +14,63 @@ static char THIS_FILE[] = __FILE__;
+ /////////////////////////////////////////////////////////////////////////////
+ // CTargetPage property page
+ 
+ IMPLEMENT_DYNCREATE(CTargetPage, CPropertyPage)
+ 
+ CTargetPage::CTargetPage() : CPropertyPage(CTargetPage::IDD)
+ {
+ 	//{{AFX_DATA_INIT(CTargetPage)
+-	m_projectType = -1;
++	m_projectType = 0;
++	m_quantumDepth = Q8;
+ 	m_useX11Stubs = FALSE;
+ 	m_decorateFiles = FALSE;
+ 	m_optionalFiles = FALSE;
+ 	m_standalone = FALSE;
+ 	m_visualStudio7 = FALSE;
+ 	m_bigCoderDLL = FALSE;
++	m_build64Bit = FALSE;
++	m_openMP = FALSE;
+ 	//}}AFX_DATA_INIT
+ }
+ 
+ CTargetPage::~CTargetPage()
+ {
+ }
+ 
+ void CTargetPage::DoDataExchange(CDataExchange* pDX)
+ {
+ 	CPropertyPage::DoDataExchange(pDX);
+ 	//{{AFX_DATA_MAP(CTargetPage)
+ 	DDX_Radio(pDX, IDC_PROJECT_TYPE, m_projectType);
++	DDX_CBIndex(pDX,IDC_QUANTUM_DEPTH, m_quantumDepth);
+ 	DDX_Check(pDX, IDC_USE_X11_STUBS, m_useX11Stubs);
+ 	DDX_Check(pDX, IDC_DECORATE_FILES, m_decorateFiles);
+ 	DDX_Check(pDX, IDC_INCLUDE_OPTIONAL, m_optionalFiles);
+ 	DDX_Check(pDX, IDC_STANDALONE, m_standalone);
+ 	DDX_Check(pDX, IDC_GENERATE_VS7, m_visualStudio7);
+ 	DDX_Check(pDX, IDC_BIGCODERDLL, m_bigCoderDLL);
++	DDX_Check(pDX, IDC_BUILD_64_BIT, m_build64Bit);
++	DDX_Check(pDX, IDC_OPEN_MP, m_openMP);
+ 	//}}AFX_DATA_MAP
+ }
+ 
+ BEGIN_MESSAGE_MAP(CTargetPage, CPropertyPage)
+ 	//{{AFX_MSG_MAP(CTargetPage)
+ 	ON_BN_CLICKED(IDC_EditConfig, OnEditConfig)
+ 	//}}AFX_MSG_MAP
+ END_MESSAGE_MAP()
+ 
+ /////////////////////////////////////////////////////////////////////////////
+ // CTargetPage message handlers
+ 
+ BOOL CTargetPage::OnInitDialog() 
+ {
+ 	CPropertyPage::OnInitDialog();
+ 	
+-	m_projectType = 0;
+ 	UpdateData(FALSE);
+ 	
+ 	return TRUE;  // return TRUE unless you set the focus to a control
+ 	              // EXCEPTION: OCX Property Pages should return FALSE
+ }
+ 
+ void CTargetPage::OnEditConfig() 
+ {
+diff --git a/VisualMagick/configure/target_page.h b/VisualMagick/configure/target_page.h
+--- a/VisualMagick/configure/target_page.h
++++ b/VisualMagick/configure/target_page.h
+@@ -18,22 +18,25 @@ class CTargetPage : public CPropertyPage
+ public:
+ 	CTargetPage();
+ 	~CTargetPage();
+ 
+ // Dialog Data
+ 	//{{AFX_DATA(CTargetPage)
+ 	enum { IDD = IDD_TARGET_PAGE };
+ 	int		m_projectType;
++	int		m_quantumDepth;
+ 	BOOL	m_useX11Stubs;
+ 	BOOL	m_decorateFiles;
+ 	BOOL	m_optionalFiles;
+ 	BOOL	m_standalone;
+ 	BOOL	m_visualStudio7;
+ 	BOOL	m_bigCoderDLL;
++	BOOL	m_build64Bit;
++	BOOL	m_openMP;
+ 	//}}AFX_DATA
+ 
+ 
+ // Overrides
+ 	// ClassWizard generate virtual function overrides
+ 	//{{AFX_VIRTUAL(CTargetPage)
+ 	protected:
+ 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
+diff --git a/VisualMagick/magick/magick_config.h.in b/VisualMagick/magick/magick_config.h.in
+--- a/VisualMagick/magick/magick_config.h.in
++++ b/VisualMagick/magick/magick_config.h.in
+@@ -49,17 +49,17 @@
+ // QuantumDepth
+ //
+ // Specify size of PixelPacket color Quantums (8, 16, or 32).  A value
+ // of 8 uses half the memory than 16 and typically runs 30% faster,
+ // but provides 256 times less color resolution than a value of 16.  A
+ // value of 16 is recommended if it is desired that all features be
+ // fully supported but even a value of 8 allows reading 16-bit files
+ // (while losing precision).
+-#define QuantumDepth 8
++$$QuantumDepth
+ 
+ /////////////
+ //
+ // UseInstalledMagick
+ //
+ // Define to build a GraphicsMagick which uses registry settings or
+ // hard-coded paths to locate installed components.  This supports
+ // using the "setup.exe" style installer, or using hard-coded path

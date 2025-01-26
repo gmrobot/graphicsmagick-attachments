@@ -1,0 +1,31 @@
+#!/bin/sh
+# Evaluate resize filter performance
+
+
+# Name of original input image
+input=input.miff
+
+# Name of temporary MPC input file
+tempbase=resize-bench
+tempmpc="${tempbase}.mpc"
+tempcache="${tempbase}.cache"
+
+# Duration
+seconds=10
+
+# Percent to resize (e.g. 10, 50, 200)
+percent=50
+
+# Optional first argument specifies 'gm' to use
+GM=${1:-gm}
+
+${GM} convert $input "${tempbase}.mpc"
+
+for filter in Point Box Triangle Hermite Hanning Hamming Blackman Gaussian Quadratic Cubic Catrom Mitchell Lanczos Bessel Sinc
+do
+  echo "--- $filter ---"
+  eval echo ${GM} benchmark -duration $seconds convert $tempmpc -filter $filter -resize "${percent}%" null:
+  eval ${GM} benchmark -duration $seconds convert $tempmpc -filter $filter -resize "${percent}%" null:
+done
+
+rm -f $tempmpc $tempcache

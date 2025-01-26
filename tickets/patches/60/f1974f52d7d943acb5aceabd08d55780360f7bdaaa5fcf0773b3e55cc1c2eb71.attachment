@@ -1,0 +1,56 @@
+# HG changeset patch
+# User Przemysław Sobala <przemyslaw.sobala@gmail.com>
+# Date 1561968434 -7200
+#      Mon Jul 01 10:07:14 2019 +0200
+# Node ID cafdeefd5e25b15ccb2de031caea5c79080f00ba
+# Parent  c6ba17134dc332e90dbe832f3d4c114d55d9aef1
+Fix documentation typo
+
+diff -r c6ba17134dc3 -r cafdeefd5e25 doc/options.imdoc
+--- a/doc/options.imdoc	Sun Jun 23 14:02:47 2019 -0500
++++ b/doc/options.imdoc	Mon Jul 01 10:07:14 2019 +0200
+@@ -2441,7 +2441,7 @@
+ any readable file on the system (a security risk).</pp>
+ 
+ <pp>
+-The values of image type (<s>%p</s>) which may be returned include:</pp>
++The values of image type (<s>%r</s>) which may be returned include:</pp>
+ 
+ <pp><pre>
+      Bilevel
+diff -r c6ba17134dc3 -r cafdeefd5e25 utilities/gm.1
+--- a/utilities/gm.1	Sun Jun 23 14:02:47 2019 -0500
++++ b/utilities/gm.1	Mon Jul 01 10:07:14 2019 +0200
+@@ -2429,7 +2429,7 @@
+ should be sanitized before use since this may be used to incorporate
+ any readable file on the system (a security risk).
+ 
+-The values of image type (\fB%p\fP) which may be returned include:
++The values of image type (\fB%r\fP) which may be returned include:
+ 
+      Bilevel
+      Grayscale
+diff -r c6ba17134dc3 -r cafdeefd5e25 www/GraphicsMagick.html
+--- a/www/GraphicsMagick.html	Sun Jun 23 14:02:47 2019 -0500
++++ b/www/GraphicsMagick.html	Mon Jul 01 10:07:14 2019 +0200
+@@ -2642,7 +2642,7 @@
+ should be sanitized before use since this may be used to incorporate
+ any readable file on the system (a security risk).</font></td></tr></table>
+ <table width="90%" border="0" cellspacing="0"             cellpadding="8">             <tr><td width="6%"><br></td><td><font size="-1">
+-The values of image type (<strong>%p</strong>) which may be returned include:</font></td></tr></table>
++The values of image type (<strong>%r</strong>) which may be returned include:</font></td></tr></table>
+ <table width="90%" border="0" cellspacing="0"             cellpadding="8">             <tr><td width="6%"><br></td><td><font size="-1"><pre>
+      Bilevel
+      Grayscale
+diff -r c6ba17134dc3 -r cafdeefd5e25 www/gm.html
+--- a/www/gm.html	Sun Jun 23 14:02:47 2019 -0500
++++ b/www/gm.html	Mon Jul 01 10:07:14 2019 +0200
+@@ -2605,7 +2605,7 @@
+ should be sanitized before use since this may be used to incorporate
+ any readable file on the system (a security risk).</font></td></tr></table>
+ <table width="90%" border="0" cellspacing="0"             cellpadding="8">             <tr><td width="6%"><br></td><td><font size="-1">
+-The values of image type (<strong>%p</strong>) which may be returned include:</font></td></tr></table>
++The values of image type (<strong>%r</strong>) which may be returned include:</font></td></tr></table>
+ <table width="90%" border="0" cellspacing="0"             cellpadding="8">             <tr><td width="6%"><br></td><td><font size="-1"><pre>
+      Bilevel
+      Grayscale

@@ -1,0 +1,110 @@
+diff -r -u GraphicsMagick/bootstrap GraphicsMagick.mod/bootstrap
+--- GraphicsMagick/bootstrap	2007-04-01 09:07:00.000000000 +1000
++++ GraphicsMagick.mod/bootstrap	2007-08-01 10:57:25.000000000 +1000
+@@ -4,9 +4,13 @@
+ # Automake or Autoconf is changed.
+ #
+ 
+-libtoolize --verbose --copy --force --nonrecursive --ltdl=ltdl
++if [ -d ltdl ]; then 
++  mv ltdl ltdl.old
++fi
++
++libtoolize --copy --force --ltdl
+ # echo 'm4_include([ltdl/m4/lt~obsolete.m4])' >> aclocal.m4
+-aclocal -I ltdl/m4 -I m4
++aclocal
+ autoheader
+ autoconf
+ automake --verbose --add-missing --copy --force-missing
+diff -r -u GraphicsMagick/configure.ac GraphicsMagick.mod/configure.ac
+--- GraphicsMagick/configure.ac	2007-07-08 10:20:23.000000000 +1000
++++ GraphicsMagick.mod/configure.ac	2007-08-01 11:00:15.000000000 +1000
+@@ -15,13 +15,16 @@
+ AC_INIT(magick/magick.h)
+ 
+ # Specify directory where m4 macros may be found.
+-AC_CONFIG_MACRO_DIR([ltdl/m4])
++AC_CONFIG_MACRO_DIR([libltdl])
+ 
+ # Directory where AC_LIBOBJ replacement files are to be found.
+-AC_CONFIG_LIBOBJ_DIR([ltdl])
++AC_CONFIG_LIBOBJ_DIR([libltdl])
+ 
+ # Directory where autotools helper scripts lives.
+-AC_CONFIG_AUX_DIR([ltdl/config])
++AC_CONFIG_AUX_DIR([libltdl])
++
++# As suggested by "info libtool"
++AC_CONFIG_SUBDIRS([libltdl])
+ 
+ #
+ # Save initial user-tunable values
+@@ -327,21 +330,20 @@
+ #
+ 
+ # Configure libltdl
+-LT_CONFIG_LTDL_DIR([ltdl],[nonrecursive]) 
+-AC_LIBLTDL_CONVENIENCE([ltdl])
+-AC_LIB_LTDL
++AC_LIBLTDL_CONVENIENCE
++AC_LIB_LTDL([libltdl])
+ # Substitute INCLTDL and LIBLTDL in the Makefiles
+-#AC_SUBST(INCLTDL)
+-#AC_SUBST(LIBLTDL)
++AC_SUBST(INCLTDL)
++AC_SUBST(LIBLTDL)
+ 
+ # Configure libtool
+ dnl AC_DISABLE_SHARED
+ dnl AC_ENABLE_STATIC
+ dnl AC_LIBTOOL_WIN32_DLL
+-AC_LIBTOOL_DLOPEN
+-LT_INIT([disable-shared win32-dll])
+-dnl AC_PROG_LIBTOOL
+-LT_LANG([C++])
++dnl AC_LIBTOOL_DLOPEN
++#LT_INIT([disable-shared win32-dll])
++AC_PROG_LIBTOOL
++#LT_LANG([C++])
+ AC_SUBST(LIBTOOL_DEPS)
+ 
+ # Check to see if building shared libraries
+diff -r -u GraphicsMagick/magick/Makefile.am GraphicsMagick.mod/magick/Makefile.am
+--- GraphicsMagick/magick/Makefile.am	2007-07-16 07:15:51.000000000 +1000
++++ GraphicsMagick.mod/magick/Makefile.am	2007-08-01 11:02:26.000000000 +1000
+@@ -32,7 +32,7 @@
+ magick_libGraphicsMagick_la_SOURCES = $(MAGICK_BASE_SRCS) $(MAGICK_PLATFORM_SRCS) $(MAGICK_CODER_SRCS) $(MAGICK_FILTER_SRCS)
+ magick_libGraphicsMagick_la_LIBADD = $(MAGICK_DEP_LIBS) $(LIBLTDL)
+ endif # WITH_MODULES
+-magick_libGraphicsMagick_la_CPPFLAGS = -I$(top_builddir)/ltdl -I$(top_srcdir)/ltdl $(LIBRARY_EXTRA_CPPFLAGS)
++magick_libGraphicsMagick_la_CPPFLAGS = $(LIBRARY_EXTRA_CPPFLAGS)
+ magick_libGraphicsMagick_la_LDFLAGS = -no-undefined -export-symbols-regex ".*" \
+ 	-version-info $(MAGICK_LIBRARY_CURRENT):$(MAGICK_LIBRARY_REVISION):$(MAGICK_LIBRARY_AGE)
+ 
+diff -r -u GraphicsMagick/Makefile.am GraphicsMagick.mod/Makefile.am
+--- GraphicsMagick/Makefile.am	2007-07-24 04:27:45.000000000 +1000
++++ GraphicsMagick.mod/Makefile.am	2007-08-01 11:02:06.000000000 +1000
+@@ -15,10 +15,13 @@
+ 
+ AM_CPPFLAGS = -I$(top_builddir) -I$(top_srcdir)
+ 
+-ACLOCAL_AMFLAGS = -I ltdl/m4 -I m4
++ACLOCAL_AMFLAGS = -I libltdl -I m4
+ 
+ MODULECOMMONFLAGS = -no-undefined -export-symbols-regex ".*" -module -avoid-version
+ 
++# As suggested by "info libtool"
++SUBDIRS = libltdl
++
+ # Options to pass when running configure in the distcheck target.
+ #
+ # We want to preserve user-provided option variables so the same
+@@ -115,7 +118,6 @@
+ MOSTLYCLEANFILES =
+ 
+ include config/Makefile.am
+-include ltdl/Makefile.inc
+ include coders/Makefile.am
+ include magick/Makefile.am
+ include filters/Makefile.am

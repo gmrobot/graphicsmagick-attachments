@@ -1,0 +1,32 @@
+# HG changeset patch
+# User Dirk Lemstra <dirk@imagemagick.org>
+# Date 1403462614 -7200
+#      Sun Jun 22 20:43:34 2014 +0200
+# Node ID 50cce19858558e3ac7261800c3e522136e6322b0
+# Parent  55f8dd04b25470c51360a99bda10f1745aa60ede
+Buildfix for older version of Visual Studio
+
+diff --git a/magick/nt_base.h b/magick/nt_base.h
+--- a/magick/nt_base.h
++++ b/magick/nt_base.h
+@@ -90,16 +90,20 @@ extern "C" {
+ #   define chsize(file,length) _chsize(file,length)
+ # endif
+ #endif
+ 
+ #if !defined(tempnam)
+ # define tempnam _tempnam
+ #endif
+ 
++#if !defined(hypot)
++#  define hypot  _hypot
++#endif
++
+ #if !defined(_MSC_VER) || (defined(_MSC_VER) && _MSC_VER < 1500)
+ #define vsnprintf _vsnprintf 
+ #endif
+ 
+ #if defined(_MT) && defined(MSWINDOWS)
+ #define SAFE_GLOBAL __declspec(thread)
+ #else
+ #define SAFE_GLOBAL

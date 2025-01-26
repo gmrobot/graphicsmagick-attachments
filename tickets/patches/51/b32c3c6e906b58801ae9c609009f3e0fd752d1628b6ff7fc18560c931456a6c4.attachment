@@ -1,0 +1,11 @@
+--- graphicsmagick-code-05d12080af7e3c4fd394d74d1898602cf6008cca/TclMagick/generic/TclMagick.c.orig	2017-04-14 12:37:34.000000000 -0500
++++ graphicsmagick-code-05d12080af7e3c4fd394d74d1898602cf6008cca/TclMagick/generic/TclMagick.c	2017-04-14 18:00:25.695009800 -0500
+@@ -418,7 +418,7 @@
+ 				"resourceType", 0, &resourceIdx) != TCL_OK) {
+ 	    return TCL_ERROR;
+ 	}
+-	if (objc == 3) {
++	if (objc == 4) {
+ 	    /*
+ 	     * Set channel depth
+ 	     */

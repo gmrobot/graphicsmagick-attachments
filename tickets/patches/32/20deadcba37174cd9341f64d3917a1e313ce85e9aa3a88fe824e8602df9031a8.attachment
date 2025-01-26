@@ -1,0 +1,61 @@
+# HG changeset patch
+# User Dirk Lemstra <dirk@imagemagick.org>
+# Date 1403455483 -7200
+#      Sun Jun 22 18:44:43 2014 +0200
+# Node ID 55f8dd04b25470c51360a99bda10f1745aa60ede
+# Parent  592b054dafa56fe5800269eaa2deba114ba522c4
+Added define to specify the name of the library that contains the mgk resource files
+
+diff --git a/VisualMagick/magick/magick_config.h.in b/VisualMagick/magick/magick_config.h.in
+--- a/VisualMagick/magick/magick_config.h.in
++++ b/VisualMagick/magick/magick_config.h.in
+@@ -192,16 +192,19 @@
+ // #define PreferencesDefaults  "~\\."
+ 
+ // Optional: Specify where gm.exe and support executables are installed
+ // #define MagickBinPath       "c:\\GraphicsMagick\\"
+ 
+ // Optional: Specify where operating system specific files are installed
+ // #define MagickLibPath       "c:\\GraphicsMagick\\"
+ 
++// Optional: Specify name of the library that contains the mgk resource files
++// #define MagickLibName       "MyGraphicsMagick.dll"
++
+ // Optional: Specify where operating system independent files are installed
+ // #define MagickSharePath     "c:\\GraphicsMagick\\"
+ 
+ // Optional: Specify where coder modules (DLLs) are installed
+ // #define MagickCoderModulesPath   "c:\\GraphicsMagick\\"
+ 
+ // Optional: Specify where filter modules (DLLs) are installed
+ // #define MagickFilterModulesPath   "c:\\GraphicsMagick\\"
+diff --git a/magick/nt_base.c b/magick/nt_base.c
+--- a/magick/nt_base.c
++++ b/magick/nt_base.c
+@@ -1607,22 +1607,26 @@ MagickExport unsigned char *NTResourceTo
+   HRSRC
+     resource;
+ 
+   unsigned char
+     *blob,
+     *value;
+ 
+   assert(id != (const char *) NULL);
++#ifdef MagickLibName
++  handle=GetModuleHandle(MagickLibName);
++#else
+   FormatString(directory,"%.1024s%.1024s%.1024s",GetClientPath(),
+     DirectorySeparator,GetClientFilename());
+   if (IsAccessible(directory))
+     handle=GetModuleHandle(directory);
+   else
+     handle=GetModuleHandle(0);
++#endif
+   if (!handle)
+     return((unsigned char *) NULL);
+   /*
+     Locate a resource matching the specified type and name in the
+     specified module.
+   */
+   resource=FindResource(handle,id,"IMAGEMAGICK");
+   if (!resource)

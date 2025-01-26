@@ -1,0 +1,66 @@
+diff -Naur GraphicsMagick-1.3.28-is-opaque-image/wand/magick_wand.c GraphicsMagick-1.3.28-is-palette-image/wand/magick_wand.c
+--- GraphicsMagick-1.3.28-is-opaque-image/wand/magick_wand.c	2018-01-25 18:45:39.668689862 +1100
++++ GraphicsMagick-1.3.28-is-palette-image/wand/magick_wand.c	2018-01-25 18:46:48.011694130 +1100
+@@ -5368,6 +5368,51 @@
+ %                                                                             %
+ %                                                                             %
+ %                                                                             %
++%   M a g i c k I s P a l e t t e I m a g e                                   %
++%                                                                             %
++%                                                                             %
++%                                                                             %
++%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
++%
++%  MagickIsPaletteImage() returns True if the check was successful with the
++%  palette parameter set to a boolean value indicating whether the current
++%  wand image is an image with 256 unique colors or less. Returns False if
++%  there was an error. Note that a palette image does not necessarily use a
++%  colormap. See MagickHasColormap() if needing to determine whether a
++%  colormap is in use.
++%
++%
++%  The format of the MagickIsPaletteImage method is:
++%
++%      unsigned int MagickIsPaletteImage(MagickWand *wand,
++%        unsigned int *palette)
++%
++%  A description of each parameter follows:
++%
++%    o wand: The magick wand.
++%
++%    o palette: Set to True if current image is 256 colors or less,
++%        False if not.
++%
++*/
++WandExport unsigned int MagickIsPaletteImage(MagickWand *wand,
++  unsigned int *palette)
++{
++  assert(wand != (MagickWand *) NULL);
++  assert(wand->signature == MagickSignature);
++  assert(palette != (unsigned int *) NULL);
++  if (wand->images == (Image *) NULL)
++    ThrowWandException(WandError,WandContainsNoImages,wand->id);
++  MagickClearException(wand);
++  *palette = IsPaletteImage(wand->image, &wand->exception);
++  return (wand->exception.severity == UndefinedException);
++}
++
++/*
++%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
++%                                                                             %
++%                                                                             %
++%                                                                             %
+ %   M a g i c k L a b e l I m a g e                                           %
+ %                                                                             %
+ %                                                                             %
+diff -Naur GraphicsMagick-1.3.28-is-opaque-image/wand/magick_wand.h GraphicsMagick-1.3.28-is-palette-image/wand/magick_wand.h
+--- GraphicsMagick-1.3.28-is-opaque-image/wand/magick_wand.h	2018-01-25 18:45:39.668689862 +1100
++++ GraphicsMagick-1.3.28-is-palette-image/wand/magick_wand.h	2018-01-25 18:46:48.011694130 +1100
+@@ -222,6 +222,7 @@
+   MagickIsGrayImage(MagickWand *,unsigned int *),
+   MagickIsMonochromeImage(MagickWand *,unsigned int *),
+   MagickIsOpaqueImage(MagickWand *,unsigned int *),
++  MagickIsPaletteImage(MagickWand *,unsigned int *),
+   MagickLabelImage(MagickWand *,const char *),
+   MagickLevelImage(MagickWand *,const double,const double,const double),
+   MagickLevelImageChannel(MagickWand *,const ChannelType,const double,

@@ -1,0 +1,12 @@
+<div dir="ltr"><div>Unfortunately, there is not yet any &quot;Deskew&quot; capability in GM.  If you have another way to determine a desired rotation angle, then the &#39;-rotate&#39; command could be used.  However, simple rotation might not be sufficient if the image perspective is not perfect (such as from a dedicated scanner). If perspective is a factor (such as when using a hand-held camera) then more advanced processing may be required to obtain an image with the correct orientation and consistent scale.</div><div><br></div><div>Support for a useful &quot;Deskew&quot; capability would be a very valuable feature.<br></div></div><br><div class="gmail_quote"><div dir="ltr" class="gmail_attr">On Sun, Dec 31, 2023 at 3:21 AM &quot;Thomas Müller&quot; &lt;<a href="mailto:titan-kahn@users.sourceforge.net">titan-kahn@users.sourceforge.net</a>&gt; wrote:<br></div><blockquote class="gmail_quote" style="margin:0px 0px 0px 0.8ex;border-left:1px solid rgb(204,204,204);padding-left:1ex"><div><p>I tested option -deskew with ImageMagick with very good results but IM is so extremely slow. Is there a similar function in GM?</p>
+<hr>
+<p><a href="https://sourceforge.net/p/graphicsmagick/discussion/250738/thread/39a9c182c8/?limit=25#3318" target="_blank">Is there something like &quot;Deskew&quot; in GM?</a></p>
+<hr>
+<p>Sent from <a href="http://sourceforge.net" target="_blank">sourceforge.net</a> because you indicated interest in <a href="https://sourceforge.net/p/graphicsmagick/discussion/250738/" target="_blank">https://sourceforge.net/p/graphicsmagick/discussion/250738/</a></p>
+<p>To unsubscribe from further messages, please visit <a href="https://sourceforge.net/auth/subscriptions/" target="_blank">https://sourceforge.net/auth/subscriptions/</a></p></div>    <div>
+    <div>
+      
+      
+    </div>
+    
+    </div></blockquote></div>

@@ -1,0 +1,81 @@
+diff -rub GraphicsMagick-1.3.14-ORIG/coders/xcf.c GraphicsMagick-1.3.14-PG/coders/xcf.c
+--- GraphicsMagick-1.3.14-ORIG/coders/xcf.c	2012-02-25 15:43:38.000000000 -0500
++++ GraphicsMagick-1.3.14-PG/coders/xcf.c	2012-03-29 20:17:23.959173442 -0400
+@@ -1475,9 +1475,14 @@
+ 
+       int
+         number_layers = 0,
++        num_layers = 0,
+         current_layer = 0,
++        first_layer = 0,
++        last_layer = 0,
++        T = 0,
+         foundAllLayers = False;
+ 
++
+       /* BIG HACK
+          because XCF doesn't include the layer count, and we
+          want to know it in advance in order to allocate memory,
+@@ -1498,6 +1503,29 @@
+       (void) SeekBlob(image, oldPos, SEEK_SET); /* restore the position! */
+ 
+ 
++      first_layer = image_info->subimage;
++      num_layers = number_layers;
++      /* subrange==0 means read all the images */
++      if( image_info->subrange > 0 && image_info->subrange < number_layers )
++        num_layers = image_info->subrange;
++      last_layer = first_layer + num_layers-1;
++
++      if (image->logging)
++        (void) LogMagickEvent(CoderEvent,GetMagickModule(),
++                          "XCF number_layers=%i first_layer=%i last_layer=%i", 
++                                      number_layers, first_layer, last_layer );
++
++
++      /* XCF has layers backwards, so this gets a bit complicated */      
++      T = last_layer;
++      last_layer = number_layers - first_layer - 1;
++      first_layer = number_layers - T - 1;
++      number_layers = num_layers;
++      
++      if (image->logging)
++        (void) LogMagickEvent(CoderEvent,GetMagickModule(),
++                          "XCF reading layers %i to %i inclusive", first_layer, last_layer );
++
+       /* allocate our array of layer info blocks */
+       layer_info=MagickAllocateArray(XCFLayerInfo *,
+                                      number_layers,
+@@ -1529,16 +1557,17 @@
+            */
+           saved_pos = TellBlob(image);
+ 
++          if( first_layer <= current_layer && current_layer <= last_layer ) {
+           /* seek to the layer offset */
+           (void) SeekBlob(image, offset, SEEK_SET);
+ 
+           /* read in the layer */
+-          layer_ok = ReadOneLayer( image, &doc_info, &layer_info[current_layer] );
++            layer_ok = ReadOneLayer( image, &doc_info, &layer_info[current_layer-first_layer] );
+           if (!layer_ok) {
+             int
+               j;
+ 
+-            for (j=0; j < current_layer; j++)
++              for (j=0; j < (current_layer-first_layer); j++)
+               DestroyImage(layer_info[j].image);
+             MagickFreeMemory(layer_info);
+             CopyException(exception,&image->exception);
+@@ -1546,11 +1575,11 @@
+             DestroyImageList(image);
+             return (Image *) NULL;
+           }
+-
+           /* restore the saved position so we'll be ready to
+            *  read the next offset.
+            */
+           (void) SeekBlob(image, saved_pos, SEEK_SET);
++          }
+ 
+           current_layer++;
+         }

@@ -1,0 +1,70 @@
+
+** CID 139303:  Code maintainability issues  (UNUSED_VALUE)
+/home/bfriesen/src/graphics/GM/magick/attribute.c: 2781 in FindEXIFAttribute()
+
+
+________________________________________________________________________________________________________
+*** CID 139303:  Code maintainability issues  (UNUSED_VALUE)
+/home/bfriesen/src/graphics/GM/magick/attribute.c: 2781 in FindEXIFAttribute()
+2775               */
+2776               ifdstack[level]=tiffp+gpsoffset;
+2777               destack[level]=0;
+2778               level++;
+2779             }
+2780               gpsoffset=0;
+>>>     CID 139303:  Code maintainability issues  (UNUSED_VALUE)
+>>>     Assigning value "1U" to "gpsfound" here, but that stored value is overwritten before it can be used.
+2781               gpsfound=MagickTrue;
+2782               break; /* break out of the for loop */
+2783             }
+2784     
+2785           if ((t == TAG_EXIF_OFFSET) || (t == TAG_INTEROP_OFFSET))
+2786             {
+
+
+
+** CID 139299:  Control flow issues  (DEADCODE)
+/home/bfriesen/src/graphics/GM/magick/attribute.c: 2764 in FindEXIFAttribute()
+
+
+________________________________________________________________________________________________________
+*** CID 139299:  Control flow issues  (DEADCODE)
+/home/bfriesen/src/graphics/GM/magick/attribute.c: 2764 in FindEXIFAttribute()
+2758               attribp = pde;
+2759               break;
+2760             }
+2761     
+2762           if (t == GPS_OFFSET && (gpsoffset != 0))
+2763             {
+>>>     CID 139299:  Control flow issues  (DEADCODE)
+>>>     Execution cannot reach this statement: "if (gpsoffset < length && l...".
+2764               if ((gpsoffset < length) && (level < (DE_STACK_SIZE-2)))
+2765             {
+2766               /*
+2767                 Push our current directory state onto the stack.
+2768               */
+2769               ifdstack[level]=ifdp;
+
+** CID 139298:  Control flow issues  (DEADCODE)
+/home/bfriesen/src/graphics/GM/magick/attribute.c: 2727 in FindEXIFAttribute()
+
+
+________________________________________________________________________________________________________
+*** CID 139298:  Control flow issues  (DEADCODE)
+/home/bfriesen/src/graphics/GM/magick/attribute.c: 2727 in FindEXIFAttribute()
+2721                   EXIFTagToDescription(t,tag_description),f,
+2722                   EXIFFormatToDescription(f),c);
+2723             }
+2724     
+2725           if (gpsfound)
+2726             {
+>>>     CID 139298:  Control flow issues  (DEADCODE)
+>>>     Execution cannot reach this statement: "if (t < 1 || t > 29) {
+  if...".
+2727               if ((t < GPS_TAG_START) || (t > GPS_TAG_STOP))
+2728             {
+2729               if (debug)
+2730                 fprintf(stderr,
+2731                     "EXIF: Skipping bogus GPS IFD tag %d ...\n",t);
+2732               continue;
+

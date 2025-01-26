@@ -1,0 +1,36 @@
+#if 0
+ 	compBuf = ImageToBlob(bGImageInfo,bGImage, &bGImageInfo->length, &bGImage->exception);
+#else
+
+	MagickPassFail enStatus = MagickFail;
+	ExportPixelAreaOptions export_options;
+	ExportPixelAreaInfo	export_info;
+
+	ExportPixelAreaOptionsInit(&export_options);
+	export_options.endian =  LSBEndian;
+
+	bGImageInfo->length = bGImage->rows * bGImage->columns * 3;
+
+	compBuf = (unsigned char *)malloc( bGImageInfo->length  );
+
+	int y;
+	register const PixelPacket *p;
+
+	(void) TransformColorspace(bGImage,RGBColorspace);
+
+	printf ( "====> bGImage Details AFT Transform\nCompression[%d]\nendian[%d]\ncolorspace[%u]\nmagick[%s]\nlength[%u]\n\n",
+			bGImage ->compression,
+			bGImage ->endian,
+			bGImage ->colorspace,
+			bGImage ->magick,
+			bGImageInfo ->length  );
+
+        for (y=0; y < (long) bGImage->rows; y++)
+        {
+          p=AcquireImagePixels(bGImage,0,y,bGImage->columns,1,&bGImage->exception);
+          if (p == (const PixelPacket *) NULL)
+            break;
+	  enStatus |= ExportImagePixelArea(bGImage,RGBQuantum,8,(compBuf+(y*bGImage->columns*3)),
+				      &export_options,&export_info);
+        }
+#endif

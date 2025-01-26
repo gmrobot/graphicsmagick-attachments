@@ -1,0 +1,14 @@
+Index: attribute.c
+===================================================================
+RCS file: /GraphicsMagick/GraphicsMagick/magick/attribute.c,v
+retrieving revision 1.92
+diff -b -u -2 -r1.92 attribute.c
+--- attribute.c	2003/07/09 22:56:09	1.92
++++ attribute.c	2003/07/11 00:47:23
+@@ -638,5 +638,5 @@
+   for (i=0; i < (long) image->generic_profiles; i++)
+   {
+-    if ((LocaleCompare(image->generic_profile[i].name,"APP1") == 0) &&
++    if ((LocaleCompare(image->generic_profile[i].name,"EXIF") == 0) &&
+         (image->generic_profile[i].length != 0))
+       {

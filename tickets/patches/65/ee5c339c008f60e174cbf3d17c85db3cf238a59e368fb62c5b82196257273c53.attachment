@@ -1,0 +1,4 @@
+438c438
+< 	if ((pcx_info.bits_per_pixel >= 8) || (pcx_info.planes != 1))
+---
+> 	if ((pcx_info.bits_per_pixel >= 8) && (pcx_info.planes != 1))

@@ -1,0 +1,32 @@
+<div dir="ltr">Thank you once again.<div><br></div><div>Gene</div></div><div class="gmail_extra"><br><div class="gmail_quote">On Wed, Jan 3, 2018 at 5:50 PM, Bob Friesenhahn <span dir="ltr">&lt;<a href="mailto:bfriesen@users.sf.net" target="_blank">bfriesen@users.sf.net</a>&gt;</span> wrote:<br><blockquote class="gmail_quote" style="margin:0 0 0 .8ex;border-left:1px #ccc solid;padding-left:1ex"><div class="m_-3700944873499429847markdown_content"><p>On Wed, 3 Jan 2018, Gene Ksenzakovic wrote:</p>
+<blockquote>
+<p>Bob,<br>
+    I have a few minutes to try and explain better.<br>
+    I was asking because I am not sure if I would not be better off uninstalling the program and reninstalling. However I I believe I have added the necesssary packages and have that portion configured. No version changes. The issue that has me confused is the permissions denied error taht is received regarding the delegates.mgk. Any insight into this would be very helpful as I am officially at a loss to explain this.</p>
+</blockquote>
+<p>I am not sure why this is happening.  I have never seen it before.</p>
+<p>Execute your command at the shell prompt prefixed with <br>
+MAGICK_DEBUG=configure,<wbr>exception like:</p>
+<p>MAGICK_DEBUG=configure,<wbr>exception gm mogrify ...</p>
+<p>and the locations where the program is looking for delegates.mgk will <br>
+be revealed in the resulting log messages.</p>
+<p>Bob</p>
+<hr>
+<p><strong> <a class="m_-3700944873499429847alink" href="https://sourceforge.net/p/graphicsmagick/support-requests/36/" target="_blank">[support-requests:#36]</a> Graphicsmagick configuration</strong></p>
+<p><strong>Status:</strong> open<br>
+<strong>Group:</strong> v1.0_(example)<br>
+<strong>Created:</strong> Wed Jan 03, 2018 08:45 PM UTC by Gene Ksenzakovic<br>
+<strong>Last Updated:</strong> Wed Jan 03, 2018 10:50 PM UTC<br>
+<strong>Owner:</strong> nobody</p>
+<p>Is it at all possible to reconfigure graphicsmagick after it has been installed?<br>
+Not sure if this is the right location for this but I have inherited a server with it preintsallled. </p>
+<hr>
+<p>Sent from <a href="http://sourceforge.net" target="_blank">sourceforge.net</a> because you indicated interest in <a href="https://sourceforge.net/p/graphicsmagick/support-requests/36/" target="_blank">https://sourceforge.net/p/<wbr>graphicsmagick/support-<wbr>requests/36/</a></p>
+<p>To unsubscribe from further messages, please visit <a href="https://sourceforge.net/auth/subscriptions/" target="_blank">https://sourceforge.net/auth/<wbr>subscriptions/</a></p></div>    <div>
+    <div>
+      
+      
+    </div>
+    
+    </div></blockquote></div><br><br clear="all"><div><br></div>-- <br><div class="gmail_signature" data-smartmail="gmail_signature"><div dir="ltr"><div>Gene Ksenzakovic<br>IEEE<br>Information Technology<br>Systems Administrator<br><br><br></div></div></div>
+</div>

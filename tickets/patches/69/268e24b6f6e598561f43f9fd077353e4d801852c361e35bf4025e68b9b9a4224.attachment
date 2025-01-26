@@ -1,0 +1,148 @@
+--- GraphicsMagick-1.4.020230319.orig/coders/heif.c	2022-11-24 16:29:31.000000000 +0100
++++ GraphicsMagick-1.4.020230319/coders/heif.c	2023-03-24 10:07:51.874868000 +0100
+@@ -171,6 +171,7 @@
+         *profile_name;
+ 
+       size_t
++        exif_pad = 0,
+         profile_size;
+ 
+       unsigned char
+@@ -195,8 +196,11 @@
+ 
+       if (NULL != profile_name && profile_size > 0)
+         {
++          if (strncmp(profile_name,"Exif",4) == 0)
++            exif_pad=2;
++
+           /* Allocate memory for profile */
+-          profile=MagickAllocateResourceLimitedArray(unsigned char*,profile_size,
++          profile=MagickAllocateResourceLimitedArray(unsigned char*,profile_size+exif_pad,
+                                                      sizeof(*profile));
+           if (profile == (unsigned char*) NULL)
+             {
+@@ -210,7 +214,7 @@
+             since they indicate the offset to the start of the TIFF
+             header of the Exif data.
+           */
+-          err=heif_image_handle_get_metadata(heif_image_handle,ids[i],profile);
++          err=heif_image_handle_get_metadata(heif_image_handle,ids[i],profile+exif_pad);
+ 
+           if (err.code != heif_error_Ok)
+             {
+@@ -226,12 +230,48 @@
+ 
+           if (strncmp(profile_name,"Exif",4) == 0 && profile_size > 4)
+             {
+-              /* skip TIFF-Header */
+-              SetImageProfile(image,profile_name,profile+4,profile_size-4);
++              /* Parse and skip offset to TIFF header */
++              unsigned char *p = profile;
++              magick_uint32_t offset;
++
++              /* Big-endian offset decoding */
++              offset = p[exif_pad+0] << 24 |
++                       p[exif_pad+1] << 16 |
++                       p[exif_pad+2] << 8 |
++                       p[exif_pad+3];
++
++              /*
++                If the TIFF header offset is not zero, then need to
++                move the TIFF data forward to the correct offset.
++              */
++              profile_size -= 4;
++              if (offset > 0 && offset < profile_size)
++                {
++                  profile_size -= offset;
++
++                  /* Strip any EOI marker if payload starts with a JPEG marker */
++                  if (profile_size > 2 && 
++                      (memcmp(p+exif_pad+4,"\xff\xd8",2) == 0 ||
++                      memcmp(p+exif_pad+4,"\xff\xe1",2) == 0) &&
++                      memcmp(p+exif_pad+4+profile_size-2,"\xff\xd9",2) == 0)
++                    profile_size -= 2;
++
++                  (void) memmove(p+exif_pad+4,p+exif_pad+4+offset,profile_size);
++                }
++
++              p[0]='E';
++              p[1]='x';
++              p[2]='i';
++              p[3]='f';
++              p[4]='\0';
++              p[5]='\0';
++
++              SetImageProfile(image,"EXIF",profile,profile_size+exif_pad+4);
+             }
+           else
+             {
+-              SetImageProfile(image,profile_name,profile,profile_size);
++              if (NULL != content_type && strncmp(content_type,"application/rdf+xml",19) == 0)
++                SetImageProfile(image,"XMP",profile,profile_size);
+             }
+           MagickFreeResourceLimitedMemory(profile);
+         }
+--- GraphicsMagick-1.4.020230319.orig/coders/jxl.c	2023-01-13 22:43:47.000000000 +0100
++++ GraphicsMagick-1.4.020230319/coders/jxl.c	2023-03-22 14:20:41.409121600 +0100
+@@ -912,9 +912,12 @@
+                                         type[0],type[1],type[2],type[3], (unsigned long) profile_size);
+ 
+                   /* Ignore tiny profiles */
+-                  if (profile_size < 4)
++                  if (profile_size < 12)
+                     break;
+ 
++                  /* Discard raw box size and type bytes */
++                  profile_size -= 8;
++
+                   if (LocaleNCompare(type,"Exif",sizeof(type)) == 0)
+                     {
+                       /*
+@@ -980,7 +983,12 @@
+       unsigned char *p = exif_profile;
+       magick_uint32_t exif_profile_offset;
+ 
+-      (void) memcpy(&exif_profile_offset,p+exif_pad,sizeof(exif_profile_offset));
++      /* Big-endian offset decoding */
++      exif_profile_offset = p[exif_pad+0] << 24 |
++                            p[exif_pad+1] << 16 |
++                            p[exif_pad+2] << 8 |
++                            p[exif_pad+3];
++
+ #if 0
+       fprintf(stderr,
+               "BOX-1: %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x\n",
+@@ -992,9 +1000,23 @@
+                             (unsigned long) exif_size, exif_profile_offset);
+ 
+       /*
+-        FIXME: If the TIFF header offset is not zero, then need to
++        If the TIFF header offset is not zero, then need to
+         move the TIFF data forward to the correct offset.
+       */
++      exif_size -= 4;
++      if (exif_profile_offset > 0 && exif_profile_offset < exif_size)
++        {
++          exif_size -= exif_profile_offset;
++
++          /* Strip any EOI marker if payload starts with a JPEG marker */
++          if (exif_size > 2 && 
++              (memcmp(p+exif_pad+4,"\xff\xd8",2) == 0 ||
++               memcmp(p+exif_pad+4,"\xff\xe1",2) == 0) &&
++              memcmp(p+exif_pad+4+exif_size-2,"\xff\xd9",2) == 0)
++            exif_size -= 2;
++
++          (void) memmove(p+exif_pad+4,p+exif_pad+4+exif_profile_offset,exif_size);
++        }
+ 
+       p[0]='E';
+       p[1]='x';
+@@ -1008,7 +1030,7 @@
+               "BOX-2: %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x\n",
+               p[0], p[1],p[2], p[3], p[4], p[5], p[6], p[7],  p[8],  p[9],  p[10],  p[11]);
+ #endif
+-      (void) SetImageProfile(image,"EXIF",exif_profile,exif_size+exif_pad);
++      (void) SetImageProfile(image,"EXIF",exif_profile,exif_size+exif_pad+4);
+ 
+       MagickFreeResourceLimitedMemory(exif_profile);
+     }

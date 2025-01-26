@@ -1,0 +1,26 @@
+<html><head><meta http-equiv="content-type" content="text/html; charset=utf-8"></head><body dir="auto">I really appreciate it. &nbsp;One final question if i May please. Let’s say if I have an image and it has a border around it. &nbsp;Is there a way to add an additional larger border but fill it with the color of the top left pixel?<br><br><div dir="ltr">Sent from my iPhone</div><div dir="ltr"><br><blockquote type="cite">On Mar 11, 2021, at 11:55 AM, Bob Friesenhahn &lt;bfriesen@users.sourceforge.net&gt; wrote:<br><br></blockquote></div><blockquote type="cite"><div dir="ltr">﻿<div class="markdown_content"><p>On Thu, 11 Mar 2021, Andrew Sutton wrote:</p>
+<blockquote>
+<p>With convert can I specify xy sizes?</p>
+</blockquote>
+<p>Yes. It looks like</p>
+<p>gm convert infile.jpg -resize '800x600' outfile.jpg.</p>
+<p>Add an exclamation mark '!' to the end of the resize argument if you <br>
+don't want to preserve the original aspect ratio.</p>
+<p>This is all described in the GraphicsMagick documentation, I suggest <br>
+reading it.  Also 'gm convert -help' provides some summary help.</p>
+<h2 id="bob">Bob</h2>
+<p>Bob Friesenhahn<br>
+bfriesen@simple.dallas.tx.us, <a href="http://www.simplesystems.org/users/bfriesen/" rel="nofollow">http://www.simplesystems.org/users/bfriesen/</a><br>
+GraphicsMagick Maintainer,    <a href="http://www.GraphicsMagick.org/" rel="nofollow">http://www.GraphicsMagick.org/</a><br>
+Public Key,     <a href="http://www.simplesystems.org/users/bfriesen/public-key.txt" rel="nofollow">http://www.simplesystems.org/users/bfriesen/public-key.txt</a></p>
+<hr>
+<p><a class="" href="https://sourceforge.net/p/graphicsmagick/discussion/250738/thread/c3a5e57809/?limit=25#999e/86b0/76cc/70c0">Specifying output filenames</a></p>
+<hr>
+<p>Sent from sourceforge.net because you indicated interest in <a href="https://sourceforge.net/p/graphicsmagick/discussion/250738/">https://sourceforge.net/p/graphicsmagick/discussion/250738/</a></p>
+<p>To unsubscribe from further messages, please visit <a href="https://sourceforge.net/auth/subscriptions/">https://sourceforge.net/auth/subscriptions/</a></p></div>    <div itemscope="" itemtype="http://schema.org/EmailMessage">
+    <div itemprop="action" itemscope="" itemtype="http://schema.org/ViewAction">
+      <link itemprop="url" href="https://sourceforge.net/p/graphicsmagick/discussion/250738/">
+      <meta itemprop="name" content="View">
+    </div>
+    <meta itemprop="description" content="View">
+    </div></div></blockquote></body></html>

@@ -1,0 +1,180 @@
+# HG changeset patch
+# User Alex Gaynor <alex.gaynor@gmail.com>
+# Date 1517688214 18000
+#      Sat Feb 03 15:03:34 2018 -0500
+# Node ID de745df72aa567dd6b3bde7dda52804666b319f5
+# Parent  4da44b50939c1b4f9fba106329473775956f72ef
+Added fuzzers for use in OSS-Fuzz
+
+diff --git a/fuzzing/README.txt b/fuzzing/README.txt
+new file mode 100644
+--- /dev/null
++++ b/fuzzing/README.txt
+@@ -0,0 +1,9 @@
++==============
++Fuzzing README
++==============
++
++This directory contains fuzzers for GraphicsMagick's APIs, written using the
++libFuzzer API: https://llvm.org/docs/LibFuzzer.html
++
++These are automatically run by Google's OSS-Fuzz infrastructure:
++https://github.com/google/oss-fuzz
+diff --git a/fuzzing/coder_fuzzer.cc b/fuzzing/coder_fuzzer.cc
+new file mode 100644
+--- /dev/null
++++ b/fuzzing/coder_fuzzer.cc
+@@ -0,0 +1,33 @@
++#include <cstdint>
++
++#include <Magick++.h>
++
++#include "utils.cc"
++
++#define FUZZ_CODER_STRING_LITERAL_X(name) FUZZ_CODER_STRING_LITERAL(name)
++#define FUZZ_CODER_STRING_LITERAL(name) #name
++
++#define FUZZ_CODER FUZZ_CODER_STRING_LITERAL_X(FUZZ_GRAPHICSMAGICK_CODER)
++
++
++extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
++    Magick::Image image;
++    std::string coder = FUZZ_CODER;
++    image.magick(coder);
++    image.fileName(coder + ":");
++    const Magick::Blob blob(data, size);
++    try {
++        image.read(blob);
++    } catch (Magick::Exception &e) {
++        return 0;
++    }
++
++#if FUZZ_GRAPHICSMAGICK_CODER_WRITE
++    Magick::Blob outBlob;
++    try {
++        image.write(&outBlob, coder);
++    } catch (Magick::Exception &e) {}
++#endif
++
++    return 0;
++}
+diff --git a/fuzzing/coder_list.cc b/fuzzing/coder_list.cc
+new file mode 100644
+--- /dev/null
++++ b/fuzzing/coder_list.cc
+@@ -0,0 +1,33 @@
++#include <iostream>
++#include <string>
++#include <vector>
++
++#include <Magick++.h>
++
++
++int main() {
++    Magick::InitializeMagick(nullptr);
++
++    std::vector<Magick::CoderInfo> coders;
++    // Require coder to be readable.
++    coderInfoList(&coders, Magick::CoderInfo::TrueMatch);
++
++    // These are coders we skip generating a fuzzer for because they don't add
++    // value. Most of these are excluded because they're not real image
++    // formats, they just use the image's file name.
++    std::vector<std::string> excludedCoders;
++    excludedCoders.push_back("GRADIENT");
++    excludedCoders.push_back("LABEL");
++    excludedCoders.push_back("NULL");
++    excludedCoders.push_back("PATTERN");
++    excludedCoders.push_back("PLASMA");
++    excludedCoders.push_back("XC");
++
++    for (auto it = coders.begin(); it != coders.end(); it++) {
++        if (std::find(excludedCoders.begin(), excludedCoders.end(), (*it).name()) != excludedCoders.end()) {
++            continue;
++        }
++
++        std::cout << ((*it).isWritable() ? "+" : "-") << (*it).name() << std::endl;
++    }
++}
+diff --git a/fuzzing/enhance_fuzzer.cc b/fuzzing/enhance_fuzzer.cc
+new file mode 100644
+--- /dev/null
++++ b/fuzzing/enhance_fuzzer.cc
+@@ -0,0 +1,17 @@
++#include <cstdint>
++
++#include <Magick++.h>
++
++#include "utils.cc"
++
++
++extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
++    const Magick::Blob blob(data, size);
++    Magick::Image image;
++    try {
++        image.read(blob);
++        image.enhance();
++    } catch (Magick::Exception &e) { }
++
++    return 0;
++}
+diff --git a/fuzzing/oss-fuzz-build.sh b/fuzzing/oss-fuzz-build.sh
+new file mode 100755
+--- /dev/null
++++ b/fuzzing/oss-fuzz-build.sh
+@@ -0,0 +1,38 @@
++#!/bin/bash -eu
++
++# This is intended to be run from OSS-Fuzz's build environment. We intend to
++# eventually refactor it to be easy to run locally.
++
++./configure --prefix="$WORK"
++make "-j$(nproc)"
++make install
++
++for f in fuzzing/*_fuzzer.cc; do
++    fuzzer=$(basename "$f" _fuzzer.cc)
++    # coder_fuzzer is handled specially below.
++    if [ "$fuzzer" == "coder" ]; then
++        continue
++    fi
++
++    $CXX $CXXFLAGS -std=c++11 -I "$WORK/include/GraphicsMagick" \
++        "$f" -o "$OUT/${fuzzer}_fuzzer" \
++        -lFuzzingEngine "$WORK/lib/libGraphicsMagick++.a" \
++        "$WORK/lib/libGraphicsMagick.a"
++done
++
++$CXX $CXXFLAGS -std=c++11 -I "$WORK/include/GraphicsMagick" \
++    fuzzing/coder_list.cc -o "$WORK/coder_list" \
++    "$WORK/lib/libGraphicsMagick++.a" "$WORK/lib/libGraphicsMagick.a"
++
++for item in $("$WORK/coder_list"); do
++    coder="${item:1}"
++    coder_flags="-DFUZZ_GRAPHICSMAGICK_CODER=$coder"
++    if [ "${item:0:1}" == "+" ]; then
++        coder_flags="$coder_flags -DFUZZ_GRAPHICSMAGICK_CODER_WRITE=1"
++    fi
++
++    $CXX $CXXFLAGS -std=c++11 -I "$WORK/include/GraphicsMagick" \
++        fuzzing/coder_fuzzer.cc -o "${OUT}/coder_${coder}_fuzzer" \
++        $coder_flags -lFuzzingEngine "$WORK/lib/libGraphicsMagick++.a" \
++        "$WORK/lib/libGraphicsMagick.a"
++done
+diff --git a/fuzzing/utils.cc b/fuzzing/utils.cc
+new file mode 100644
+--- /dev/null
++++ b/fuzzing/utils.cc
+@@ -0,0 +1,12 @@
++class MagickState {
++public:
++    MagickState() {
++        Magick::InitializeMagick(nullptr);
++        MagickLib::SetMagickResourceLimit(MagickLib::MemoryResource, 1000000000);
++        MagickLib::SetMagickResourceLimit(MagickLib::WidthResource, 2048);
++        MagickLib::SetMagickResourceLimit(MagickLib::HeightResource, 2048);
++    }
++};
++
++// Static initializer so this code is run once at startup.
++MagickState kMagickState;

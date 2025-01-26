@@ -1,0 +1,11 @@
+--- graphicsmagick-code-05d12080af7e3c4fd394d74d1898602cf6008cca/TclMagick/generic/TclMagick.c.orig	2017-04-14 12:37:34.000000000 -0500
++++ graphicsmagick-code-05d12080af7e3c4fd394d74d1898602cf6008cca/TclMagick/generic/TclMagick.c	2017-04-14 17:57:41.375611300 -0500
+@@ -139,7 +139,7 @@
+      * create one from the MagickWand address
+      */
+     if( name == NULL ) {
+-        sprintf(idString, "magick%lX", (unsigned long)wandPtr );
++        sprintf(idString, "magick%p", wandPtr );
+         name = idString;
+     }
+ 

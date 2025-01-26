@@ -1,0 +1,84 @@
+diff -r 6424ff2885ca configure.ac
+--- a/configure.ac	Fri Jun 23 17:17:50 2023 -0500
++++ b/configure.ac	Mon Jun 26 18:27:55 2023 +0200
+@@ -130,6 +130,7 @@
+ MAGICK_API_CFLAGS=''
+ MAGICK_API_CPPFLAGS=''
+ MAGICK_API_PC_CPPFLAGS=''
++MAGICK_API_PRV_DEPS=''
+ MAGICK_API_LDFLAGS=''
+ MAGICK_API_LIBS=''
+ 
+@@ -2050,7 +2051,17 @@
+     passed=0
+     have_lcms_header='no'
+ 
+-    # PKG_CHECK_MODULES([LCMS2], [lcms2], [], [])
++    PKG_CHECK_MODULES([LCMS2], [lcms2], [
++        passed=`expr $passed + 1`
++        LIB_LCMS=$LCMS2_LIBS
++        MAGICK_API_PRV_DEPS="$MAGICK_API_PRV_DEPS lcms2"
++    ], [
++        # failed to find lcms by pkg-config
++        AC_CHECK_LIB([lcms2],[cmsSetLogErrorHandler],[
++            passed=`expr $passed + 1`
++            LIB_LCMS='-llcms2'
++        ],[failed=`expr $failed + 1`],)
++    ])
+ 
+     # Check for <lcms2.h>
+     AC_CHECK_HEADER([lcms2.h],[have_lcms_header='yes'],,)
+@@ -2077,7 +2088,6 @@
+       failed=`expr $failed + 1`
+     fi
+ 
+-    AC_CHECK_LIB([lcms2],[cmsSetLogErrorHandler],[passed=`expr $passed + 1`],[failed=`expr $failed + 1`],)
+     AC_MSG_CHECKING([if LCMS v2 package is complete])
+     if test $passed -gt 0
+     then
+@@ -2086,9 +2096,7 @@
+         AC_MSG_RESULT([no -- some components failed test])
+         have_lcms2='no (failed tests)'
+       else
+-        LIB_LCMS='-llcms2'
+         LIBS="$LIB_LCMS $LIBS"
+-        #AC_DEFINE(HasLCMS2,1,Define if you have LCMS v2 library)
+         AC_MSG_RESULT([yes])
+         have_lcms2='yes'
+       fi
+@@ -2097,7 +2105,6 @@
+     fi
+ fi
+ 
+-
+ AM_CONDITIONAL([HasLCMS],[test "$have_lcms2" = 'yes'])
+ if test "$have_lcms2" = 'yes'
+ then
+@@ -2105,6 +2112,9 @@
+ fi
+ AC_SUBST([LIB_LCMS])
+ 
++#
++# Check for PNG
++#
+ have_png='no'
+ LIB_PNG=''
+ if test "$have_zlib" = 'yes'
+@@ -3909,6 +3919,7 @@
+ AC_SUBST([MAGICK_API_CFLAGS])
+ AC_SUBST([MAGICK_API_CPPFLAGS])
+ AC_SUBST([MAGICK_API_PC_CPPFLAGS])
++AC_SUBST([MAGICK_API_PRV_DEPS])
+ AC_SUBST([MAGICK_API_LDFLAGS])
+ AC_SUBST([MAGICK_API_LIBS])
+ 
+diff -r 6424ff2885ca magick/GraphicsMagick.pc.in
+--- a/magick/GraphicsMagick.pc.in	Fri Jun 23 17:17:50 2023 -0500
++++ b/magick/GraphicsMagick.pc.in	Mon Jun 26 18:27:55 2023 +0200
+@@ -7,5 +7,6 @@
+ Name: GraphicsMagick
+ Version: @PACKAGE_VERSION@
+ Description: GraphicsMagick image processing library
++Requires.private: @MAGICK_API_PRV_DEPS@
+ Libs: -L${libdir} -lGraphicsMagick
+ Cflags: -I${includedir} @MAGICK_API_PC_CPPFLAGS@

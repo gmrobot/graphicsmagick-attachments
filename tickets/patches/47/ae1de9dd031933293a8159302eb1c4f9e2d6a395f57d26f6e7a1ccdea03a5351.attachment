@@ -1,0 +1,50 @@
+diff -Naur GraphicsMagick-1.3.25-exif-orientation-fix/wand/magick_wand.c GraphicsMagick-1.3.25-wand-clear-exception/wand/magick_wand.c
+--- GraphicsMagick-1.3.25-exif-orientation-fix/wand/magick_wand.c	2015-10-05 06:35:40.000000000 +1100
++++ GraphicsMagick-1.3.25-wand-clear-exception/wand/magick_wand.c	2016-10-14 00:05:45.671825602 +1100
+@@ -978,6 +978,35 @@
+ %                                                                             %
+ %                                                                             %
+ %                                                                             %
++%   M a g i c k C l e a r E x c e p t i o n                                   %
++%                                                                             %
++%                                                                             %
++%                                                                             %
++%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
++%
++%  MagickClearException() clears the last wand exception.
++%
++%  The format of the MagickClearException method is:
++%
++%      void MagickClearException(MagickWand *wand)
++%
++%  A description of each parameter follows:
++%
++%    o wand: The magick wand.
++%
++*/
++WandExport void MagickClearException(MagickWand *wand)
++{
++  assert(wand != (MagickWand *) NULL);
++  assert(wand->signature == MagickSignature);
++  GetExceptionInfo(&wand->exception);
++}
++
++/*
++%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
++%                                                                             %
++%                                                                             %
++%                                                                             %
+ %   M a g i c k C l i p I m a g e                                             %
+ %                                                                             %
+ %                                                                             %
+diff -Naur GraphicsMagick-1.3.25-exif-orientation-fix/wand/magick_wand.h GraphicsMagick-1.3.25-wand-clear-exception/wand/magick_wand.h
+--- GraphicsMagick-1.3.25-exif-orientation-fix/wand/magick_wand.h	2015-10-05 06:35:40.000000000 +1100
++++ GraphicsMagick-1.3.25-wand-clear-exception/wand/magick_wand.h	2016-10-14 00:05:40.467763458 +1100
+@@ -359,6 +359,7 @@
+   *MagickWriteImageBlob(MagickWand *,size_t *);
+ 
+ extern WandExport void
++  MagickClearException(MagickWand *),
+   MagickResetIterator(MagickWand *);
+ 
+ #if defined(__cplusplus) || defined(c_plusplus)

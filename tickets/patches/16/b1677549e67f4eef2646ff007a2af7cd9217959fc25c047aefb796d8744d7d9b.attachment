@@ -1,0 +1,33 @@
+2843a2844
+> 		size_t path_max_points;
+2846c2847,2858
+<         length=1;
+---
+>        
+> 		
+> 		/* Reserved Memory size is:
+> 										path_max_points  = length *3/2
+> 		 
+> 		   Where:
+> 				length                               - Number of tokens (length)
+> 				*3                                   - Maximum points number to render one segment with bezier
+> 				/ 2                                  - 1 point have 2 coords 
+> 				+Some additional 6*BezierQuantum+360 - some approximation stuff had taken from TraceStrokePolygon code 
+> 		*/
+> 		length=1;
+2848c2860
+<         for (s=token; *s != '\0'; s=t)
+---
+> 		for (s=token; *s != '\0'; s=t)
+2858c2870,2872
+<         if (i > (long) (number_points-6*BezierQuantum*length/3-1))
+---
+> 
+> 		path_max_points = length*3/2  + 6*BezierQuantum+360; 
+>         if (i > (long) (number_points-path_max_points))
+2860,2861c2874,2875
+<             number_points+=6*BezierQuantum*length/3;
+< 			MagickReallocMemory(PrimitiveInfo *,primitive_info,
+---
+>             number_points+=path_max_points;
+>             MagickReallocMemory(PrimitiveInfo *,primitive_info,

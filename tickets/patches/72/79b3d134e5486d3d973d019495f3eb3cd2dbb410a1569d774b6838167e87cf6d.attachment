@@ -1,0 +1,12 @@
+diff -r 3179db7ab1fb TclMagick/unix/m4/tcl.m4
+--- a/TclMagick/unix/m4/tcl.m4	Sun Apr 30 17:57:12 2023 -0500
++++ b/TclMagick/unix/m4/tcl.m4	Mon May 01 17:57:30 2023 +0400
+@@ -3340,7 +3340,7 @@
+     AC_PROG_CC
+     AC_PROG_CPP
+ 
+-    INSTALL='$(SHELL) $(srcdir)/config/install-sh -c'
++    INSTALL='$(SHELL) $(top_srcdir)/unix/config/install-sh -c'
+     INSTALL_DATA_DIR='${INSTALL} -d -m 755'
+     INSTALL_DATA='${INSTALL} -m 644'
+     INSTALL_PROGRAM='${INSTALL}'

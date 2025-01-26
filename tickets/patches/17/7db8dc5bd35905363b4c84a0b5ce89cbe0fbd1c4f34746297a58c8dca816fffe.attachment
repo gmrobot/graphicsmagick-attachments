@@ -1,0 +1,42 @@
+Index: utility.c
+===================================================================
+RCS file: /GraphicsMagick/GraphicsMagick/magick/utility.c,v
+retrieving revision 1.518
+diff -u -r1.518 utility.c
+--- utility.c	9 Feb 2010 00:43:56 -0000	1.518
++++ utility.c	17 Feb 2010 17:19:17 -0000
+@@ -3312,8 +3312,8 @@
+       i=0;
+       while (1)
+ 	{
+-	  c=(unsigned int) p[i];
+-	  d=(unsigned int) q[i];
++	  c=(unsigned int) ((unsigned char *) p)[i];
++	  d=(unsigned int) ((unsigned char *) q)[i];
+ 	  if ((c == 0U) || (AsciiMap[c] != AsciiMap[d]))
+ 	    break;
+ 	  i++;
+@@ -3398,7 +3398,7 @@
+   register size_t
+     n;
+ 
+-  register unsigned char
++  register unsigned int
+     c,
+     d;
+ 
+@@ -3408,11 +3408,11 @@
+     return(1);
+   for (n=length; n != 0; n--)
+   {
+-    c=(unsigned char) *p;
+-    d=(unsigned char) *q;
++    c=*((unsigned char *) p);
++    d=*((unsigned char *) q);
+     if (AsciiMap[c] != AsciiMap[d])
+       return(AsciiMap[c]-AsciiMap[d]);
+-    if (c == '\0')
++    if (c == 0U)
+       return(0);
+     p++;
+     q++;

@@ -1,0 +1,43 @@
+diff -r 78fc37241752 Magick++/lib/Image.cpp
+--- a/Magick++/lib/Image.cpp	Sat Oct 13 17:53:35 2012 -0500
++++ b/Magick++/lib/Image.cpp	Mon Oct 15 22:55:32 2012 -0700
+@@ -1672,6 +1672,26 @@
+   throwException( exceptionInfo );
+ }
+ 
++// Thumbnail image
++void Magick::Image::thumbnail ( const Geometry &geometry_ )
++{
++  long x = 0;
++  long y = 0;
++  unsigned long width = columns();
++  unsigned long height = rows();
++
++  GetMagickGeometry (static_cast<std::string>(geometry_).c_str(),
++		      &x, &y,
++		      &width, &height );
++
++  ExceptionInfo exceptionInfo;
++  GetExceptionInfo( &exceptionInfo );
++  MagickLib::Image* newImage =
++    ThumbnailImage( image(), width, height, &exceptionInfo );
++  replaceImage( newImage );
++  throwException( exceptionInfo );
++}
++
+ // Segment (coalesce similar image components) by analyzing the
+ // histograms of the color components and identifying units that are
+ // homogeneous with the fuzzy c-means technique.
+diff -r 78fc37241752 Magick++/lib/Magick++/Image.h
+--- a/Magick++/lib/Magick++/Image.h	Sat Oct 13 17:53:35 2012 -0500
++++ b/Magick++/lib/Magick++/Image.h	Mon Oct 15 22:55:32 2012 -0700
+@@ -586,6 +586,9 @@
+     
+     // Resize image by using simple ratio algorithm
+     void            scale ( const Geometry &geometry_ );
++
++    // Faster thumbnail generator
++    void            thumbnail ( const Geometry &geometry_ );
+     
+     // Segment (coalesce similar image components) by analyzing the
+     // histograms of the color components and identifying units that

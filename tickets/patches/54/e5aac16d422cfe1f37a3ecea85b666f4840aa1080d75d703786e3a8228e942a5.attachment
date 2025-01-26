@@ -1,0 +1,61 @@
+diff -Naur GraphicsMagick-1.3.28/wand/magick_wand.c GraphicsMagick-1.3.28-has-colormap/wand/magick_wand.c
+--- GraphicsMagick-1.3.28/wand/magick_wand.c	2017-12-10 07:02:50.000000000 +1100
++++ GraphicsMagick-1.3.28-has-colormap/wand/magick_wand.c	2018-01-25 15:58:02.878837912 +1100
+@@ -5090,6 +5090,46 @@
+ %                                                                             %
+ %                                                                             %
+ %                                                                             %
++%   M a g i c k H a s C o l o r M a p                                         %
++%                                                                             %
++%                                                                             %
++%                                                                             %
++%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
++%
++%  MagickHasColormap() returns True if the check was successful with the
++%  colormap parameter set to a boolean value indicating whether the current
++%  wand image uses a color map or not. Returns False if there are no wand
++%  images available.
++%
++%  The format of the MagickHasColormap method is:
++%
++%      unsigned int MagickHasColormap(MagickWand *wand,
++%        unsigned int *colormap)
++%
++%  A description of each parameter follows:
++%
++%    o wand: The magick wand.
++%
++%    o colormap: Set to True if current image uses a color map, False if not.
++%
++*/
++WandExport unsigned int MagickHasColormap(MagickWand *wand,
++  unsigned int *colormap)
++{
++  assert(wand != (MagickWand *) NULL);
++  assert(wand->signature == MagickSignature);
++  if (wand->images == (Image *) NULL)
++    ThrowWandException(WandError,WandContainsNoImages,wand->id);
++
++  *colormap = (wand->image->storage_class == PseudoClass ? True : False);
++  return(True);
++}
++
++/*
++%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
++%                                                                             %
++%                                                                             %
++%                                                                             %
+ %   M a g i c k H a s N e x t I m a g e                                       %
+ %                                                                             %
+ %                                                                             %
+diff -Naur GraphicsMagick-1.3.28/wand/magick_wand.h GraphicsMagick-1.3.28-has-colormap/wand/magick_wand.h
+--- GraphicsMagick-1.3.28/wand/magick_wand.h	2017-07-05 07:32:09.000000000 +1000
++++ GraphicsMagick-1.3.28-has-colormap/wand/magick_wand.h	2018-01-25 15:58:02.878837912 +1100
+@@ -215,6 +215,7 @@
+   MagickGetImageWhitePoint(MagickWand *,double *,double *),
+   MagickGetSize(const MagickWand *,unsigned long *,unsigned long *),
+   MagickHaldClutImage(MagickWand *wand,const MagickWand *clut_wand),
++  MagickHasColormap(MagickWand *,unsigned int *),
+   MagickHasNextImage(MagickWand *),
+   MagickHasPreviousImage(MagickWand *),
+   MagickImplodeImage(MagickWand *,const double),

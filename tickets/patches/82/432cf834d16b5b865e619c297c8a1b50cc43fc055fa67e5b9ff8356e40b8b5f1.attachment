@@ -1,0 +1,10 @@
+--- a/magick/display.c
++++ b/magick/display.c
+@@ -10615,6 +10615,7 @@
+       AddNoiseCommand,
+       SharpenCommand,
+       BlurCommand,
++      ThresholdCommand,
+       EdgeDetectCommand,
+       SpreadCommand,
+       ShadeCommand,

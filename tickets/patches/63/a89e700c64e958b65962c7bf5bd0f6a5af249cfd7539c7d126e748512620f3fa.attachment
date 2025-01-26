@@ -1,0 +1,52 @@
+diff -purN GraphicsMagick-1.3.34.orig/configure GraphicsMagick-1.3.34/configure
+--- GraphicsMagick-1.3.34.orig/configure	2019-12-24 16:23:46.000000000 +0100
++++ GraphicsMagick-1.3.34/configure	2020-01-03 15:55:17.239635256 +0100
+@@ -28361,7 +28361,7 @@ rm -f conftest.mmap
+ for ac_func in atoll CryptGenRandom \
+   clock_getres clock_gettime ctime_r cosf _exit fabsf fcntl fstatvfs ftime getexecname \
+   getc_unlocked getpagesize getrlimit getpid lltostr localtime_r logf madvise \
+-  _NSGetExecutablePath _pclose pclose poll _popen popen posix_fadvise \
++  _NSGetExecutablePath omp_pause_resource_all _pclose pclose poll _popen popen posix_fadvise \
+   posix_fallocate posix_madvise posix_memalign posix_spawnp pread pwrite \
+   putc_unlocked raise rand_r readdir_r readlink realpath select seekdir \
+   setrlimit sigemptyset sigaction sinf spawnvp strerror strerror_r strlcat strlcpy \
+diff -purN GraphicsMagick-1.3.34.orig/configure.ac GraphicsMagick-1.3.34/configure.ac
+--- GraphicsMagick-1.3.34.orig/configure.ac	2019-12-24 16:20:25.000000000 +0100
++++ GraphicsMagick-1.3.34/configure.ac	2020-01-03 15:54:38.587131890 +0100
+@@ -2769,7 +2769,7 @@ GM_FUNC_MMAP_FILEIO
+ AC_CHECK_FUNCS([atoll CryptGenRandom \
+   clock_getres clock_gettime ctime_r cosf _exit fabsf fcntl fstatvfs ftime getexecname \
+   getc_unlocked getpagesize getrlimit getpid lltostr localtime_r logf madvise \
+-  _NSGetExecutablePath _pclose pclose poll _popen popen posix_fadvise \
++  _NSGetExecutablePath omp_pause_resource_all _pclose pclose poll _popen popen posix_fadvise \
+   posix_fallocate posix_madvise posix_memalign posix_spawnp pread pwrite \
+   putc_unlocked raise rand_r readdir_r readlink realpath select seekdir \
+   setrlimit sigemptyset sigaction sinf spawnvp strerror strerror_r strlcat strlcpy \
+diff -purN GraphicsMagick-1.3.34.orig/magick/magick.c GraphicsMagick-1.3.34/magick/magick.c
+--- GraphicsMagick-1.3.34.orig/magick/magick.c	2019-06-15 16:05:05.000000000 +0200
++++ GraphicsMagick-1.3.34/magick/magick.c	2019-12-30 11:08:51.316785350 +0100
+@@ -198,6 +198,11 @@ DestroyMagick(void)
+ 
+   /* Release destruction lock */
+   SPINLOCK_RELEASE;
++
++#if defined(HAVE_OMP_PAUSE_RESOURCE_ALL)
++  /* Relinquish resources used by OpenMP on all devices */
++  omp_pause_resource_all(omp_pause_hard);
++#endif
+ }
+ /*
+   Destroy MagickInfo structure.
+diff -purN GraphicsMagick-1.3.34.orig/magick/magick_config.h.in GraphicsMagick-1.3.34/magick/magick_config.h.in
+--- GraphicsMagick-1.3.34.orig/magick/magick_config.h.in	2019-12-24 16:25:18.000000000 +0100
++++ GraphicsMagick-1.3.34/magick/magick_config.h.in	2020-01-03 15:55:18.167647362 +0100
+@@ -193,6 +193,9 @@
+ /* define if the compiler accepts the new for scoping rules */
+ #undef HAVE_NEW_FOR_SCOPING
+ 
++/* Define to 1 if you have the `omp_pause_resource_all' function. */
++#undef HAVE_OMP_PAUSE_RESOURCE_ALL
++
+ /* Define to 1 if you have the `pclose' function. */
+ #undef HAVE_PCLOSE
+ 

@@ -1,0 +1,49 @@
+Index: constitute.c
+===================================================================
+RCS file: /GraphicsMagick/ImageMagick/magick/constitute.c,v
+retrieving revision 1.275
+diff -b -u -2 -r1.275 constitute.c
+--- constitute.c	2003/04/11 18:02:04	1.275
++++ constitute.c	2003/04/16 18:02:46
+@@ -802,5 +802,5 @@
+           for (i=0; i < (long) length; i++)
+           {
+-            switch (map[i])
++            switch (switch_map[i])
+             {
+               case RedMapQuantum:
+@@ -856,5 +856,5 @@
+           for (i=0; i < (long) length; i++)
+           {
+-            switch (map[i])
++            switch (switch_map[i])
+             {
+               case RedMapQuantum:
+@@ -910,5 +910,5 @@
+           for (i=0; i < (long) length; i++)
+           {
+-            switch (map[i])
++            switch (switch_map[i])
+             {
+               case RedMapQuantum:
+@@ -964,5 +964,5 @@
+           for (i=0; i < (long) length; i++)
+           {
+-            switch (map[i])
++            switch (switch_map[i])
+             {
+               case RedMapQuantum:
+@@ -1018,5 +1018,5 @@
+           for (i=0; i < (long) length; i++)
+           {
+-            switch (map[i])
++            switch (switch_map[i])
+             {
+               case RedMapQuantum:
+@@ -1072,5 +1072,5 @@
+           for (i=0; i < (long) length; i++)
+           {
+-            switch (map[i])
++            switch (switch_map[i])
+             {
+               case RedMapQuantum:

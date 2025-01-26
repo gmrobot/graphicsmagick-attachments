@@ -1,0 +1,13 @@
+--- graphicsmagick-1.3.25/magick/command.c.orig	2017-01-28 09:31:07.000000000 +0200
++++ graphicsmagick-1.3.25/magick/command.c	2017-01-28 09:33:42.965126294 +0200
+@@ -15669,9 +15669,9 @@
+       {
+         if (LocaleCompare("frame",option+1) == 0)
+           {
++            ximage_info.frame=(*option == '-');
+             MagickFreeMemory(argv[i]);
+             argv[i]=AcquireString("-ignore");  /* resolve option confict */
+-            ximage_info.frame=(*option == '-');
+             break;
+           }
+         MagickFatalError(OptionFatalError,UnrecognizedOption,option);

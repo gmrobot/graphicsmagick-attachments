@@ -1,0 +1,617 @@
+diff -Naru '--exclude-from=exclude.txt' GraphicsMagick-1.4.020240420.original/PerlMagick/Magick.xs GraphicsMagick-1.4.020240420/PerlMagick/Magick.xs
+--- GraphicsMagick-1.4.020240420.original/PerlMagick/Magick.xs	2024-01-17 14:41:23.000000000 -0500
++++ GraphicsMagick-1.4.020240420/PerlMagick/Magick.xs	2024-05-07 10:19:34.229229422 -0400
+@@ -2108,6 +2117,288 @@
+ #                                                                             #
+ #                                                                             #
+ #                                                                             #
++#   A c c e s s D e f i n i t i o n                                           #
++#                                                                             #
++#                                                                             #
++#                                                                             #
++###############################################################################
++#
++#
++void
++AccessDefinition(ref,...)
++  Graphics::Magick ref=NO_INIT
++  ALIAS:
++    accessdefinition = 1
++    GetDefinition    = 2
++    getdefinition    = 3
++  PPCODE:
++  {
++    Image
++      *image;
++
++    ExceptionInfo
++      exception;
++
++    register int
++      i;
++
++    struct PackageInfo
++      *info;
++
++    SV
++      *reference,    /* reference is the SV* of ref=SvIV(reference) */
++      *return_value; /* value returned by function */
++    
++    /* parameters to AccessDefinition */
++    const char
++      *magick,
++      *key,
++      *value;
++    
++    if (!sv_isobject(ST(0)))
++      {
++        MagickError(OptionError,ReferenceIsNotMyType,PackageName);
++        XSRETURN_EMPTY;
++      }
++    reference=SvRV(ST(0));
++    image=SetupList(aTHX_ reference,&info,(SV ***) NULL);
++    if (!image && !info)
++      {
++        MagickError(OptionError,ReferenceIsNotMyType,NULL);
++        XSRETURN_EMPTY;
++      }
++      
++    value        = NULL;
++    return_value = NULL;
++    
++    if (items == 3) {
++      magick = SvPV(ST(1),na);
++      key    = SvPV(ST(2),na);
++      value = AccessDefinition( info->image_info, magick, key );
++    }
++    
++    if ( value ) {
++      return_value = newSVpv(value,0);
++    }
++    
++    if (return_value) {
++       ST(0) = return_value;
++      sv_2mortal(ST(0));
++    } else {
++       ST(0) = &sv_undef;
++    }
++    XSRETURN(1);
++  }
++
++#
++###############################################################################
++#                                                                             #
++#                                                                             #
++#                                                                             #
++#   A d d D e f i n i t i o n                                                 #
++#                                                                             #
++#                                                                             #
++#                                                                             #
++###############################################################################
++#
++#
++void
++AddDefinition(ref,...)
++  Graphics::Magick ref=NO_INIT
++  ALIAS:
++    adddefinition  = 1
++    SetDefinition  = 2
++    setdefinition  = 3
++  PPCODE:
++  {
++    ExceptionInfo
++      exception;
++
++    register int
++      i;
++
++    struct PackageInfo
++      *info;
++
++    SV
++      *reference;  /* reference is the SV* of ref=SvIV(reference) */
++
++    /* parameters to AddDefinition */
++    const char
++      *magick,
++      *key,
++      *value;
++    
++    MagickPassFail
++      return_value;  /* return value */
++    
++    return_value = MagickFail;
++    
++    dMY_CXT;
++    MY_CXT.error_list=newSVpv("",0);
++    if (!sv_isobject(ST(0)))
++      {
++        goto MethodException;
++      }
++    reference=SvRV(ST(0));
++    (void)SetupList(aTHX_ reference,&info,(SV ***) NULL);
++    if (info && items == 4) {
++      magick = SvPV(ST(1),na);
++      key    = SvPV(ST(2),na);
++      value  = SvPV(ST(3),na);
++      return_value = AddDefinition( info->image_info, magick, key, value, &exception );
++    }
++        
++    GetExceptionInfo(&exception);
++    if (exception.severity != UndefinedException) {
++      CatchException(&exception);
++      return_value = MagickFail;
++    }
++    DestroyExceptionInfo(&exception);
++    
++  MethodException:
++    ST(0) = newSViv(return_value);
++    sv_2mortal(ST(0));
++    XSRETURN(1);
++  }
++
++#
++###############################################################################
++#                                                                             #
++#                                                                             #
++#                                                                             #
++#   A d d D e f i n i t i o n s                                               #
++#                                                                             #
++#                                                                             #
++#                                                                             #
++###############################################################################
++#
++#
++void
++AddDefinitions(ref,...)
++  Graphics::Magick ref=NO_INIT
++  ALIAS:
++    adddefinitions  = 1
++    SetDefinitions  = 2
++    setdefinitions  = 3
++  PPCODE:
++  {
++    ExceptionInfo
++      exception;
++
++    register int
++      i;
++
++    struct PackageInfo
++      *info;
++
++    SV
++      *reference;  /* reference is the SV* of ref=SvIV(reference) */
++
++    const char
++      *values;  /* parameters to AddDefinitions */
++    
++    MagickPassFail
++      return_value;  /* return value */
++    
++    return_value = MagickFail;
++    
++    dMY_CXT;
++    MY_CXT.error_list=newSVpv("",0);
++    if (!sv_isobject(ST(0)))
++      {
++        goto MethodException;
++      }
++    reference=SvRV(ST(0));
++    (void)SetupList(aTHX_ reference,&info,(SV ***) NULL);
++    if (info && items == 2) {
++      values = SvPV(ST(1),na);
++      return_value = AddDefinitions( info->image_info, values, &exception );
++    }
++    
++    GetExceptionInfo(&exception);
++    if (exception.severity != UndefinedException) {
++      CatchException(&exception);
++      return_value = MagickFail;
++    }
++    DestroyExceptionInfo(&exception);
++    
++  MethodException:
++    ST(0) = newSViv(return_value);
++    sv_2mortal(ST(0));
++    XSRETURN(1);
++  }
++
++#
++###############################################################################
++#                                                                             #
++#                                                                             #
++#                                                                             #
++#   R e m o v e D e f i n i t i o n s                                         #
++#                                                                             #
++#                                                                             #
++#                                                                             #
++###############################################################################
++#
++#
++void
++RemoveDefinitions(ref,...)
++  Graphics::Magick ref=NO_INIT
++  ALIAS:
++    removedefinitions  = 1
++  PPCODE:
++  {
++    ExceptionInfo
++      exception;
++
++    register int
++      i;
++
++    struct PackageInfo
++      *info;
++
++    SV
++      *reference;  /* reference is the SV* of ref=SvIV(reference) */
++
++    const char
++      *values;  /* parameters to RemoveDefinitions */
++    
++    MagickPassFail
++      return_value;  /* return value */
++    
++    return_value = MagickFail;
++    
++    dMY_CXT;
++    MY_CXT.error_list=newSVpv("",0);
++    if (!sv_isobject(ST(0)))
++      {
++        goto MethodException;
++      }
++    reference=SvRV(ST(0));
++    (void)SetupList(aTHX_ reference,&info,(SV ***) NULL);
++    if (info && items == 2) {
++      values = SvPV(ST(1),na);
++      return_value = RemoveDefinitions( info->image_info, values );
++    }
++    
++    GetExceptionInfo(&exception);
++    if (exception.severity != UndefinedException) {
++      CatchException(&exception);
++      return_value = MagickFail;
++    }
++    DestroyExceptionInfo(&exception);
++    
++  MethodException:
++    ST(0) = newSViv(return_value);
++    sv_2mortal(ST(0));
++    XSRETURN(1);
++  }
++
++#
++###############################################################################
++#                                                                             #
++#                                                                             #
++#                                                                             #
+ #   A n i m a t e                                                             #
+ #                                                                             #
+ #                                                                             #
+diff -Naru '--exclude-from=exclude.txt' GraphicsMagick-1.4.020240420.original/PerlMagick/t/definitions.t GraphicsMagick-1.4.020240420/PerlMagick/t/definitions.t
+--- GraphicsMagick-1.4.020240420.original/PerlMagick/t/definitions.t	1969-12-31 19:00:00.000000000 -0500
++++ GraphicsMagick-1.4.020240420/PerlMagick/t/definitions.t	2024-05-07 10:38:59.797252442 -0400
+@@ -0,0 +1,95 @@
++#!/usr/local/bin/perl
++# Copyright (C) 2003 GraphicsMagick Group
++# Copyright (C) 2002 ImageMagick Studio
++# Copyright (C) 1991-1999 E. I. du Pont de Nemours and Company
++#
++# This program is covered by multiple licenses, which are described in
++# Copyright.txt. You should have received a copy of Copyright.txt with this
++# package; otherwise see http://www.graphicsmagick.org/www/Copyright.html.
++#
++#
++# Test definitions.
++#
++# Contributed by Alex Kent Hajnal <graphicsmagick@alephnull.net>
++#
++BEGIN { $| = 1; $test=1, print "1..17\n"; }
++END {print "not ok 1\n" unless $loaded;}
++use Graphics::Magick;
++$loaded=1;
++
++push @INC, '.';  # Needed if running outside of make test
++require 't/subroutines.pl';
++
++chdir 't' || die 'Cd failed';
++
++# Create temporary image
++my $image = Graphics::Magick->new;
++
++# (no definitions set)
++
++print("Reading an unset definition ...\n");
++testAccessDefinition( $image, 'png', 'test', undef );
++
++++$test;
++print("Adding png:test=TEST ...\n");
++testAddDefinition( $image, 'png', 'test', 'TEST', 1 );
++
++# png:test=TEST
++
++++$test;
++print("Checking that png:test=TEST ...\n");
++testAccessDefinition( $image, 'png', 'test', 'TEST' );
++
++++$test;
++print("Changing png:test to Test ...\n");
++testAddDefinition( $image, 'png', 'test', 'Test', 1 );
++
++# png:test=Test
++
++++$test;
++print("Verifying the change ...\n");
++testAccessDefinition( $image, 'png', 'test', 'Test' );
++
++++$test;
++print("Adding abc:DEF=ghi and 123:456=789 ...\n");
++testAddDefinitions( $image, 'abc:DEF=ghi,123:456=789', 1 );
++
++# png:test=Test  abc:DEF=ghi  123:456=789
++
++++$test;
++print("Verifying the changes ...\n");
++testAccessDefinition( $image, 'png', 'test', 'Test' );
++++$test;
++testAccessDefinition( $image, '123', '456', '789' );
++++$test;
++testAccessDefinition( $image, 'abc', 'DEF', 'ghi' );
++
++++$test;
++print("Removing png:test and 123:456 ...\n");
++testRemoveDefinitions( $image, 'png:test,123:456', 1 );
++
++# abc:DEF=ghi
++
++++$test;
++print("Verifying the changes ...\n");
++testAccessDefinition( $image, 'png', 'test', undef );
++++$test;
++testAccessDefinition( $image, '123', '456', undef );
++++$test;
++testAccessDefinition( $image, 'abc', 'DEF', 'ghi' );
++
++++$test;
++print("Removing all definitions ...\n");
++testRemoveDefinitions( $image, '*', 1 );
++
++# (no definitions set)
++
++++$test;
++print("Verifying the changes ...\n");
++testAccessDefinition( $image, 'png', 'test', undef );
++++$test;
++testAccessDefinition( $image, '123', '456', undef );
++++$test;
++testAccessDefinition( $image, 'abc', 'DEF', undef );
++
++1;
+diff -Naru '--exclude-from=exclude.txt' GraphicsMagick-1.4.020240420.original/PerlMagick/t/subroutines.pl GraphicsMagick-1.4.020240420/PerlMagick/t/subroutines.pl
+--- GraphicsMagick-1.4.020240420.original/PerlMagick/t/subroutines.pl	2024-01-17 14:41:23.000000000 -0500
++++ GraphicsMagick-1.4.020240420/PerlMagick/t/subroutines.pl	2024-05-07 10:19:17.085035928 -0400
+@@ -1323,4 +1323,87 @@
+   print "not ok $test\n";
+   return 1
+ }
++
++#
++# Test AccessDefinition method
++#
++# Usage: testAccessDefinition( image, magick, key, expected );
++#
++sub testAccessDefinition {
++  my( $image, $magick, $key, $expected ) = @_;
++
++	my $got = $image->AccessDefinition($magick, $key);
++ 
++  if( !defined( $got ) && !defined( $expected ) ) {
++    # Undefined value is expected
++    print "ok $test\n";
++  } elsif ( !defined( $got ) ) {
++    print "Expected ($expected), Got (undefined)\n";
++    print "not ok $test\n";
++  } else {
++    if ("$expected" eq "$got") {
++      print "ok $test\n";
++    } else {
++      print "Expected ($expected), Got ($got)\n";
++      print "not ok $test\n";
++    }
++  }
++}
++
++#
++# Test AddDefinition method
++#
++# Usage: testAddDefinition( image, magick, key, value, expected );
++#
++sub testAddDefinition {
++  my( $image, $magick, $key, $value, $expected ) = @_;
++ 
++	# returns 1 on success, 0 on failure
++  my $result = $image->AddDefinition($magick, $key, $value);
++ 
++  if ( $result == $expected) {
++    print "ok $test\n";
++  } else {
++    print "Expected ($expected), Got ($result)\n";
++    print "not ok $test\n";
++  }
++}
++
++#
++# Test AddDefinitions method
++#
++# Usage: testAddDefinitions( image, values, expected );
++#
++sub testAddDefinitions {
++  my( $image, $values, $expected ) = @_;
++ 
++	# returns 1 on success, 0 on failure
++  my $result = $image->AddDefinitions($values);
++ 
++  if ( $result == $expected) {
++    print "ok $test\n";
++  } else {
++    print "Expected ($expected), Got ($result)\n";
++    print "not ok $test\n";
++  }
++}
++
++#
++# Test RemoveDefinitions method
++#
++# Usage: testRemoveDefinitions( image, values, expected );
++#
++sub testRemoveDefinitions {
++  my( $image, $values, $expected ) = @_;
++ 
++	# returns 1 on success, 0 on failure
++  my $result = $image->RemoveDefinitions($values);
++ 
++  if ( $result == $expected) {
++    print "ok $test\n";
++  } else {
++    print "Expected ($expected), Got ($result)\n";
++    print "not ok $test\n";
++  }
++}
+ 1;
+diff -Naru '--exclude-from=exclude.txt' GraphicsMagick-1.4.020240420.original/www/api/image.html GraphicsMagick-1.4.020240420/www/api/image.html
+--- GraphicsMagick-1.4.020240420.original/www/api/image.html	2024-01-20 10:41:57.000000000 -0500
++++ GraphicsMagick-1.4.020240420/www/api/image.html	2024-05-07 07:02:17.062161380 -0400
+@@ -145,7 +145,8 @@
+ <h1><a class="toc-backref" href="#id74">AddDefinitions</a></h1>
+ <div class="section" id="id4">
+ <h2>Synopsis</h2>
+-<pre class="literal-block">MagickPassFail AddDefinitions( <a class="reference external" href="../api/types.html#imageinfo">ImageInfo</a> *image_info, const char *options );</pre>
++<pre class="literal-block">MagickPassFail AddDefinitions( <a class="reference external" href="../api/types.html#imageinfo">ImageInfo</a> *image_info, const char *options,
++                               <a class="reference external" href="../api/types.html#exceptioninfo">ExceptionInfo</a> *exception );</pre>
+ </div>
+ <div class="section" id="id5">
+ <h2>Description</h2>
+@@ -153,7 +154,7 @@
+ map of definitions in ImageInfo. Definitions may be used by coders/decoders
+ that read and write images.</p>
+ <p>The format of the AddDefinitions method is:</p>
+-<pre class="literal-block">MagickPassFail AddDefinitions( <a class="reference external" href="../api/types.html#imageinfo">ImageInfo</a> *image_info, const char *options );</pre>
++<pre class="literal-block">MagickPassFail AddDefinitions( <a class="reference external" href="../api/types.html#imageinfo">ImageInfo</a> *image_info, const char *options, <a class="reference external" href="../api/types.html#exceptioninfo">ExceptionInfo</a> *exception );</pre>
+ <p>A description of each parameter follows:</p>
+ <dl class="simple">
+ <dt>image_info:</dt>
+@@ -696,7 +697,7 @@
+ <h1><a class="toc-backref" href="#id95">RemoveDefinitions</a></h1>
+ <div class="section" id="id46">
+ <h2>Synopsis</h2>
+-<pre class="literal-block">void RemoveDefinitions( <a class="reference external" href="../api/types.html#imageinfo">ImageInfo</a> *image_info, const char *options );</pre>
++<pre class="literal-block">MagickPassFail RemoveDefinitions( <a class="reference external" href="../api/types.html#imageinfo">ImageInfo</a> *image_info, const char *keys );</pre>
+ </div>
+ <div class="section" id="id47">
+ <h2>Description</h2>
+@@ -705,7 +706,7 @@
+ write images. RemoveDefinitions() returns true only if the specified keys
+ are present in the map and are actually removed.</p>
+ <p>The format of the RemoveDefinitions method is:</p>
+-<pre class="literal-block">void RemoveDefinitions( <a class="reference external" href="../api/types.html#imageinfo">ImageInfo</a> *image_info, const char *options );</pre>
++<pre class="literal-block">MagickPassFail RemoveDefinitions( <a class="reference external" href="../api/types.html#imageinfo">ImageInfo</a> *image_info, const char *keys );</pre>
+ <p>A description of each parameter follows:</p>
+ <dl class="simple">
+ <dt>image_info:</dt>
+@@ -717,9 +718,6 @@
+ all the key/value pairs in the definitions map. This key always
+ succeeds.</p>
+ </dd>
+-<dt>exception:</dt>
+-<dd><p>Errors result in updates to this structure.</p>
+-</dd>
+ </dl>
+ </div>
+ </div>
+diff -Naru '--exclude-from=exclude.txt' GraphicsMagick-1.4.020240420.original/www/perl.html GraphicsMagick-1.4.020240420/www/perl.html
+--- GraphicsMagick-1.4.020240420.original/www/perl.html	2024-01-28 10:49:52.000000000 -0500
++++ GraphicsMagick-1.4.020240420/www/perl.html	2024-05-07 07:44:06.279073089 -0400
+@@ -259,13 +259,10 @@
+ method Write() to write to standard out:</p>
+ <pre class="literal-block">binmode STDOUT;
+ $image-&gt;Write('png:-');</pre>
+-<dl class="simple">
+-<dt>To read an image from a disk file, use::</dt>
+-<dd><p>$image = Graphics::Magick-&gt;new;
++<dt>To read an image from a disk file, use:</dt>
++<pre class="literal-block">$image = Graphics::Magick-&gt;new;
+ $filename = 'test.gif';
+-$status = $image-&gt;Read ($filename);</p>
+-</dd>
+-</dl>
++$status = $image-&gt;Read ($filename);</pre>
+ <p>and to write the image back to the disk file, use:</p>
+ <pre class="literal-block">$status = $image-&gt;Write($filename);</pre>
+ <p>To read an image in the GIF format from a PERL filehandle, use:</p>
+@@ -285,6 +282,25 @@
+ <p>converts files image000.miff, image001.miff, etc.</p>
+ <p>You can optionally add Image to any method name. For example, ReadImage()
+ is an alias for method Read().</p>
++<p>To set encoder parameters when saving a file use AddDefinition($magick, $key, $value); 
++this returns 0 on success or 1 on failure.
++A comma-delimited list of parameters can also be set using AddDefinition($values); 
++this returns 0 on success or 1 on failure.
++To remove parameters use RemoveDefinitions($keys) (comma-delimited; the special 
++key * can be used to remove all definitions); this returns 1 if the specified 
++keys were present and removed, 0 otherwise.
++To get the current value of a parameter use AccessDefinition($magick, $key); 
++note that if no value was explicitly set then undef is returned.
++These are equivalent to using the commandline gm utility's -define option.
++For example, to save a lossless WebP image one can use:
++<pre class="literal-block">$image-&gt;AddDefinition('webp', 'lossless', 'TRUE');
++$image-&gt;Write(filename=&gt;'webp:output.webp');
++</pre>
++or
++<pre class="literal-block">$image-&gt;AddDefinitions('webp:lossless=TRUE');
++$image-&gt;Write(filename=&gt;'webp:output.webp');
++</pre>
++</p>
+ </div>
+ <div class="section" id="manipulate-an-image">
+ <h1><a class="toc-backref" href="#id9">Manipulate an Image</a></h1>
+diff -Naru '--exclude-from=exclude.txt' GraphicsMagick-1.4.020240420.original/www/perl.rst GraphicsMagick-1.4.020240420/www/perl.rst
+--- GraphicsMagick-1.4.020240420.original/www/perl.rst	2024-01-17 15:30:37.000000000 -0500
++++ GraphicsMagick-1.4.020240420/www/perl.rst	2024-05-07 07:49:11.190090083 -0400
+@@ -243,7 +243,8 @@
+   binmode STDOUT;
+   $image->Write('png:-');
+ 
+-To read an image from a disk file, use::
++To read an image from a disk file, use:
++
+   $image = Graphics::Magick->new;
+   $filename = 'test.gif';
+   $status = $image->Read ($filename);
+@@ -279,6 +280,25 @@
+ You can optionally add Image to any method name. For example, ReadImage()
+ is an alias for method Read().
+ 
++To set encoder parameters when saving a file use AddDefinition($magick, $key, 
++$value); this returns 0 on success or 1 on failure. A comma-delimited list of 
++parameters can also be set using AddDefinition($values); this returns 0 on 
++success or 1 on failure. To remove parameters use RemoveDefinitions($keys) 
++(comma-delimited; the special key * can be used to remove all definitions); 
++this returns 1 if the specified keys were present and removed, 0 otherwise.
++To get the current value of a parameter use AccessDefinition($magick, $key); 
++note that if no value was explicitly set then undef is returned. These are 
++equivalent to using the commandline gm utility's -define option. For example, 
++to save a lossless WebP image one can use:
++
++  $image->AddDefinition('webp', 'lossless', 'TRUE');
++  $image->Write(filename=&gt;'webp:output.webp');
++
++or
++
++  $image->AddDefinitions('webp:lossless=TRUE');
++  $image->Write(filename=&gt;'webp:output.webp');
++
+ 
+ Manipulate an Image
+ ===================

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  </head>
+  <body>
+    <p>This has to do with the free version of Visual Studio, which does
+      not have everything. To solve, it look in the Solution Explorer,
+      and remove 'UTIL_imdisplay'.  At least that is what I think it is
+      called.  It will be the build target which is failing.  Just
+      removed it from the project file.</p>
+    <p>Bob<br>
+    </p>
+    <div class="moz-cite-prefix">On 3/23/2024 10:41 AM, ltk19 wrote:<br>
+    </div>
+    <blockquote type="cite"
+cite="mid:%2Fp%2Fgraphicsmagick%2Fdiscussion%2F250738%2F3ddd96dd14b086ed0a0a7690648080ebfdb619b4.discussion@graphicsmagick.p.sourceforge.net">
+      <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+      <div class="markdown_content">
+        <p>Thank you for your help, please find my details for error
+          messages below,</p>
+        <p>C1083<br>
+          Cannot open include file: afxwin.h': No such file or directory</p>
+        <p>LNK1181<br>
+          cannot open input file 'CORE_RL_magick_lib'</p>
+        <hr>
+        <p><a class=""
+href="https://sourceforge.net/p/graphicsmagick/discussion/250738/thread/f6096853fd/?limit=25#e87e"
+            moz-do-not-send="true">Issue on building Gmagick PHP
+            extension on Windows server</a></p>
+        <hr>
+        <p>Sent from sourceforge.net because you indicated interest in <a
+href="https://sourceforge.net/p/graphicsmagick/discussion/250738/"
+            moz-do-not-send="true" class="moz-txt-link-freetext">https://sourceforge.net/p/graphicsmagick/discussion/250738/</a></p>
+        <p>To unsubscribe from further messages, please visit <a
+            href="https://sourceforge.net/auth/subscriptions/"
+            moz-do-not-send="true" class="moz-txt-link-freetext">https://sourceforge.net/auth/subscriptions/</a></p>
+      </div>
+      <div itemscope="" itemtype="http://schema.org/EmailMessage">
+        <div itemprop="action" itemscope=""
+          itemtype="http://schema.org/ViewAction">
+          <link itemprop="url"
+href="https://sourceforge.net/p/graphicsmagick/discussion/250738/">
+          <meta itemprop="name" content="View">
+        </div>
+        <meta itemprop="description" content="View">
+      </div>
+    </blockquote>
+  </body>
+</html>

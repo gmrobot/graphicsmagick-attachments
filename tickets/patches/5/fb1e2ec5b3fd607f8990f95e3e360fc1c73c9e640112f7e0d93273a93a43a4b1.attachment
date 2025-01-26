@@ -1,0 +1,37 @@
+=head1 Creating Thumbnails
+
+Here are some examples of a variety of different ways to create thumbnails.
+In these examples, we'll use C<$w> and C<$h> for the desired target width and
+height of the thumnail, while C<$i> represents a Graphics::Magick object that has
+has already been created based on the image you want to create a thumbnail of.
+
+ my $i = Graphics::Magick->new();
+ $i->Read('big.jpg');
+
+=head2 Resize to max width and height
+
+ $i->Resize("${w}x$h");
+
+=head2 Resize to a maximum width, any height
+
+ $i->Resize(width => $w);
+
+=head2 Resize to maximum height, any width
+
+ $i->Resize( height  => $h);
+
+=head2 Distort to a fixed size
+
+ $i->Resize( width => $w, height => $h );
+
+=head2 Compressing Thumbnails
+
+It's often useful to compress thumbnails to reduce their file size even
+further. This example, will use JPEG compression to compress the image to a
+quality of 30.
+
+ $i->Set( compression => 'JPEG');
+ $i->Set( quality => 30 );
+  
+
+

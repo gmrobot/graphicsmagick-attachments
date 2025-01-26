@@ -1,0 +1,96 @@
+diff -Naur GraphicsMagick-1.3.25-wand-get-set-orientation/wand/magick_wand.c GraphicsMagick-1.3.25-wand-auto-orient/wand/magick_wand.c
+--- GraphicsMagick-1.3.25-wand-get-set-orientation/wand/magick_wand.c	2016-10-18 19:32:46.359623418 +1100
++++ GraphicsMagick-1.3.25-wand-auto-orient/wand/magick_wand.c	2016-10-18 19:50:59.407441075 +1100
+@@ -624,6 +624,81 @@
+ %                                                                             %
+ %                                                                             %
+ %                                                                             %
++%   M a g i c k A u t o O r i e n t I m a g e                                 %
++%                                                                             %
++%                                                                             %
++%                                                                             %
++%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
++%
++%  MagickAutoOrientImage() adjusts the current image so that its orientation
++%  is suitable for viewing (i.e. top-left orientation).
++%
++%  The format of the MagickAutoOrientImage method is:
++%
++%      unsigned int MagickAutoOrientImage(MagickWand *wand,
++%        const OrientationType current_orientation,
++%        ExceptionInfo *exception)
++%
++%  A description of each parameter follows:
++%
++%    o wand: The magick wand.
++%
++%    o current_orientation: Current image orientation. May be one of:
++%         TopLeftOrientation      Left to right and Top to bottom
++%         TopRightOrientation     Right to left  and Top to bottom
++%         BottomRightOrientation  Right to left and Bottom to top
++%         BottomLeftOrientation   Left to right and Bottom to top
++%         LeftTopOrientation      Top to bottom and Left to right
++%         RightTopOrientation     Top to bottom and Right to left
++%         RightBottomOrientation  Bottom to top and Right to left
++%         LeftBottomOrientation   Bottom to top and Left to right
++%         UndefinedOrientation    Current orientation is not known.
++%                                 Use orientation defined by the
++%                                 current image if any. Equivalent
++%                                 to MagickGetImageOrientation().
++%
++%  Returns True on success, False otherwise.
++%
++%  Note that after successful auto-orientation the internal orientation will
++%  be set to TopLeftOrientation. However this internal value is only written
++%  to TIFF files. For JPEG files, there is currently no support for resetting
++%  the EXIF orientation tag to TopLeft so the JPEG should be stripped or EXIF
++%  profile removed if present to prevent saved auto-oriented images from being
++%  incorrectly rotated a second time by follow-on viewers that understand the
++%  EXIF orientation tag.
++%
++*/
++WandExport unsigned int MagickAutoOrientImage(MagickWand *wand,
++  const OrientationType current_orientation)
++{
++  Image
++    *orient_image;
++
++  OrientationType
++    orientation;
++
++  assert(wand != (MagickWand *) NULL);
++  assert(wand->signature == MagickSignature);
++  if (wand->images == (Image *) NULL)
++    ThrowWandException(WandError,WandContainsNoImages,wand->id);
++
++  orientation = (current_orientation == UndefinedOrientation)
++    ? wand->image->orientation
++    : current_orientation;
++
++  orient_image=AutoOrientImage(wand->image,orientation,&wand->exception);
++  if (orient_image == (Image *) NULL)
++    return(False);
++  ReplaceImageInList(&wand->image,orient_image);
++  wand->images=GetFirstImageInList(wand->image);
++  return(True);
++}
++
++/*
++%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
++%                                                                             %
++%                                                                             %
++%                                                                             %
+ %   M a g i c k A v e r a g e I m a g e s                                     %
+ %                                                                             %
+ %                                                                             %
+diff -Naur GraphicsMagick-1.3.25-wand-get-set-orientation/wand/magick_wand.h GraphicsMagick-1.3.25-wand-auto-orient/wand/magick_wand.h
+--- GraphicsMagick-1.3.25-wand-get-set-orientation/wand/magick_wand.h	2016-10-18 19:38:55.050369032 +1100
++++ GraphicsMagick-1.3.25-wand-auto-orient/wand/magick_wand.h	2016-10-18 19:43:18.104248953 +1100
+@@ -156,6 +156,7 @@
+   MagickAnnotateImage(MagickWand *,const DrawingWand *,const double,
+     const double,const double,const char *),
+   MagickAnimateImages(MagickWand *,const char *),
++  MagickAutoOrientImage(MagickWand *wand,const OrientationType),
+   MagickBlackThresholdImage(MagickWand *,const PixelWand *),
+   MagickBlurImage(MagickWand *,const double,const double),
+   MagickBorderImage(MagickWand *,const PixelWand *,const unsigned long,
