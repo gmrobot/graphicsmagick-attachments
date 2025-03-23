@@ -1,0 +1,60 @@
+# HG changeset patch
+# User kclauson
+# Date 1737705236 0
+#      Fri Jan 24 07:53:56 2025 +0000
+# Branch heic-rotation-orientation-clash-fix-v2
+# Node ID 741ce78b5ab5a26a20c580888bfc20a7e982fae6
+# Parent  efac1f4750fb73f1c4d00bd1a785a58503c2514b
+Fix orientation handling for heic
+
+diff --git a/coders/heif.c b/coders/heif.c
+--- a/coders/heif.c
++++ b/coders/heif.c
+@@ -141,7 +141,8 @@ static MagickBool IsHEIF(const unsigned 
+ /*
+   Read metadata (Exif and XMP)
+ */
+-static Image *ReadMetadata(struct heif_image_handle *heif_image_handle,
++static Image *ReadMetadata(const ImageInfo *image_info,
++                           struct heif_image_handle *heif_image_handle,
+                            Image *image, ExceptionInfo *exception)
+ {
+   int
+@@ -300,6 +301,28 @@ static Image *ReadMetadata(struct heif_i
+               if (NULL != content_type && strncmp(content_type,"application/rdf+xml",19) == 0)
+                 SetImageProfile(image,"XMP",profile,profile_size);
+             }
++          /*
++            Only apply Exif orienation if ignore-transformations is true
++            since HEIF native transformations will handle orientation otherwise
++          */
++          if (strncmp(profile_name,"Exif",4) == 0)
++            {
++              const char *value;
++              MagickBool ignore_transformations = MagickFalse;
++              if ((value=AccessDefinition(image_info,"heif","ignore-transformations")))
++                if (LocaleCompare(value,"TRUE") == 0)
++                  ignore_transformations = MagickTrue;
++
++              if (!ignore_transformations)
++                {
++                  const ImageAttribute *attribute = GetImageAttribute(image,"EXIF:Orientation");
++                  if (attribute && attribute->value)
++                    {
++                      SetImageAttribute(image,"EXIF:Orientation","1");
++                      image->orientation = UndefinedOrientation;
++                    }
++                }
++            }
+           MagickFreeResourceLimitedMemory(profile);
+         }
+     }
+@@ -610,7 +633,7 @@ static Image *ReadHEIFImage(const ImageI
+     }
+ 
+   /* Read EXIF and XMP profile */
+-  if (!ReadMetadata(heif_image_handle, image, exception))
++  if (!ReadMetadata(image_info, heif_image_handle, image, exception))
+     {
+       HEIFReadCleanup();
+       return NULL;
